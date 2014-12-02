@@ -1,4 +1,3 @@
-var Blake2s = require('blake2s')
 var cont    = require('cont')
 var pull    = require('pull-stream')
 var defer   = require('pull-defer')
@@ -9,27 +8,8 @@ var mkdirp  = require('mkdirp')
 var fs      = require('fs')
 var glob    = require('pull-glob')
 
-function toPath(dir, hash) {
-  var i = hash.indexOf('.')
-  var alg = hash.substring(i+1)
-
-  var h = new Buffer(hash.substring(0, i), 'base64').toString('hex')
-  return path.join(dir, alg, h.substring(0,2), h.substring(2))
-}
-
-function createHash (onHash) {
-  var hash = new Blake2s()
-
-  var hasher = pull.through(function (data) {
-    hash.update(data)
-  }, function () {
-    var digest = hash.digest('base64') + '.blake2s'
-    hasher.digest = digest
-    onHash && onHash(digest)
-  })
-
-  return hasher
-}
+var util    = require('./util')
+var createHash = util.createHash, toPath = util.toPath
 
 var Blobs = module.exports = function (dir) {
   var n = 0
@@ -100,7 +80,7 @@ var Blobs = module.exports = function (dir) {
 
       return deferred
     },
-    list: function () {
+    ls: function () {
       return pull(
         glob(path.join(dir, '*', '*', '*')),
         pull.map(function (filename) {

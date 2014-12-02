@@ -1,4 +1,3 @@
-
 var Blake2s = require('blake2s')
 var cont    = require('cont')
 var pull    = require('pull-stream')
@@ -113,6 +112,4 @@ var Blobs = module.exports = function (dir) {
       )
     }
   }
-
 }
-

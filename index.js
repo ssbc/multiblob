@@ -90,6 +90,9 @@ var Blobs = module.exports = function (dir) {
           return new Buffer(parts.join(''), 'hex').toString('base64')+'.'+alg
         })
       )
+    },
+    rm: function (hash, cb) {
+      fs.unlink(toPath(dir, hash), cb)
     }
   }
 }

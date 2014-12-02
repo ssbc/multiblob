@@ -38,6 +38,10 @@ check if the given hash is in the store.
 
 source stream that reads the list of hashes available in the store.
 
+### rm(hash, cb)
+
+remove a hash from the store.
+
 ## todo
 
 maybe emit events when blobs are stored?

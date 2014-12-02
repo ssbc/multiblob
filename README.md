@@ -11,7 +11,9 @@ var Blobs = require('multiblob')
 
 var blobs = Blobs(dir) //pass in the basedir.
 
-blobs.add
+pull(source, blobs.add(function (err, hash) {
+  console.log('added source to blobs:', hash)
+})
 
 ```
 

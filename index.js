@@ -11,6 +11,18 @@ var glob    = require('pull-glob')
 var util    = require('./util')
 var createHash = util.createHash, toPath = util.toPath
 
+function write (filename, cb) {
+  return toPull.sink(fs.createWriteStream(filename), cb)
+}
+
+function read (filename) {
+  return toPull.source(fs.createReadStream(filename))
+}
+
+function toArray (h) {
+  return Array.isArray(h) ? h : [h]
+}
+
 var Blobs = module.exports = function (dir) {
   var n = 0
   var waiting = [], tmp = false
@@ -24,12 +36,12 @@ var Blobs = module.exports = function (dir) {
     tmp = true; while(waiting.length) waiting.shift()()
   })
 
-  function write (filename, cb) {
-    return toPull.sink(fs.createWriteStream(filename), cb)
-  }
-
-  function read (filename) {
-    return toPull.source(fs.createReadStream(filename))
+  function has (hash) {
+    return function (cb) {
+      fs.stat(toPath(dir, hash), function (err, stat) {
+        cb(null, !!stat)
+      })
+    }
   }
 
   return {
@@ -37,9 +49,17 @@ var Blobs = module.exports = function (dir) {
       return read(toPath(dir, hash))
     },
 
-    has: function (hash, cb) {
-      fs.stat(toPath(dir, hash), cb)
-      return this
+    has: function (hashes, cb) {
+      var n = !Array.isArray(hashes)
+      cont.para(toArray(hashes).map(has)) (function (_, ary) {
+        // This will only error if the hash is not present,
+        // so never callback an error.
+        // PS. if you have a situation where you never error
+        // add a comment like this one to explain why.
+        if(n) cb(null, ary[0])
+        else  cb(null, ary)
+      })
+      return cb
     },
 
     add: function (hash, cb) {
@@ -60,7 +80,7 @@ var Blobs = module.exports = function (dir) {
 
           if(hash && hash !== hasher.digest)
             return cb(new Error('actual hash:'+ hasher.digest
-              + ' did not match expected hash:'+hash))
+              + ' did not match expected hash:'+hash), hasher.digest)
 
           var p = toPath(dir, hash || hasher.digest)
 

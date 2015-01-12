@@ -41,6 +41,15 @@ tape('add, size', function (t) {
   )
 })
 
+tape('hasher exposes size', function (t) {
+  var hasher = util.createHash()
+  pull(pull.values(random1), hasher, pull.drain())
+
+  t.equal(hasher.digest, hash1)
+  t.equal(hasher.size, 1024*100)
+  t.end()
+})
+
 tape('size of missing hash is null', function (t) {
   blobs.size(hasher([]), function (_, size) {
     t.equal(size, null)

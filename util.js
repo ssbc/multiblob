@@ -17,7 +17,7 @@ exports.createHash = function (onHash) {
 
   var hasher = pull.through(function (data) {
     data = isBuffer(data) ? data : new Buffer(data)
-    hasher.byteLength += data.length
+    hasher.size += data.length
     hash.update(data)
   }, function () {
     var digest = hash.digest('base64') + '.blake2s'
@@ -25,7 +25,7 @@ exports.createHash = function (onHash) {
     onHash && onHash(digest)
   })
 
-  hasher.len = 0
+  hasher.size = 0
 
   return hasher
 }

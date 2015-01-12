@@ -9,7 +9,7 @@ var fs      = require('fs')
 var glob    = require('pull-glob')
 
 var util    = require('./util')
-var createHash = util.createHash, toPath = util.toPath
+var createHash = util.createHash, toPath = util.toPath, isHash = util.isHash
 
 function write (filename, cb) {
   return toPull.sink(fs.createWriteStream(filename), cb)
@@ -44,14 +44,18 @@ var Blobs = module.exports = function (dir) {
     }
   }
 
-  return {
-    get: function (hash) {
-      return read(toPath(dir, hash))
-    },
+  function size (hash) {
+    return function (cb) {
+      fs.stat(toPath(dir, hash), function (err, stat) {
+        cb(null, stat ? stat.size : -1)
+      })
+    }
+  }
 
-    has: function (hashes, cb) {
+  function createTester (test) {
+    return function (hashes, cb) {
       var n = !Array.isArray(hashes)
-      cont.para(toArray(hashes).map(has)) (function (_, ary) {
+      cont.para(toArray(hashes).map(test)) (function (_, ary) {
         // This will only error if the hash is not present,
         // so never callback an error.
         // PS. if you have a situation where you never error
@@ -60,7 +64,45 @@ var Blobs = module.exports = function (dir) {
         else  cb(null, ary)
       })
       return cb
+    }
+  }
+
+
+  return {
+    get: function (opts) {
+      if(isHash(opts))
+        return read(toPath(dir, opts))
+
+      var hash = opts.key || opts.hash
+      if(!isHash(hash))
+        return pull.error(new Error(
+          'multiblob.get: {hash} is mandatory'
+        ))
+
+      var stream = defer.source()
+      fs.stat(toPath(dir, hash), function (err, stat) {
+        if(opts.size != null && opts.size !== stat.size)
+          stream.abort(new Error('incorrect file length,'
+            + ' requested:' + opts.size + ' file was:' + stat.size
+            + ' for file:' + hash
+          ))
+
+        else if(opts.max != null && opts.max < stat.size)
+          stream.abort(new Error('incorrect file length,'
+            + ' requested:' + opts.size + ' file was:' + stat.size
+            + ' for file:' + hash
+          ))
+
+        else
+          stream.resolve(read(toPath(dir, hash)))
+      })
+
+      return stream
     },
+
+    size: createTester(size),
+
+    has: createTester(has),
 
     add: function (hash, cb) {
       if(!cb) cb = hash, hash = null

@@ -41,6 +41,14 @@ tape('add, size', function (t) {
   )
 })
 
+tape('size of missing hash is null', function (t) {
+  blobs.size(hasher([]), function (_, size) {
+    t.equal(size, null)
+    t.end()
+  })
+
+})
+
 tape('errors if requested size too large', function (t) {
   pull(
     blobs.get({key: hash1, size: 1024*100 + 1}),

@@ -47,7 +47,7 @@ var Blobs = module.exports = function (dir) {
   function size (hash) {
     return function (cb) {
       fs.stat(toPath(dir, hash), function (err, stat) {
-        cb(null, stat ? stat.size : -1)
+        cb(null, stat ? stat.size : null)
       })
     }
   }

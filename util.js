@@ -24,3 +24,10 @@ exports.createHash = function (onHash) {
   return hasher
 }
 
+function isString (s) {
+  return 'string' === typeof s
+}
+
+exports.isHash = function (data) {
+  return isString(data) && /^[A-Za-z0-9\/+]{43}=\.blake2s$/.test(data)
+}

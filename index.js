@@ -27,7 +27,7 @@ function toArray (h) {
 var Blobs = module.exports = function (dir) {
   var n = 0
   var waiting = [], tmp = false
-  var tmpdir = path.join(os.tmpdir(), 'blobs-'+Date.now()+((Math.random()*1000000)|0))
+  var tmpdir = path.join(os.tmpdir(), 'blobs-'+dir.replace(/\//g, '-'))
 
   function mktmp (cb) {
     if(tmp) return cb()

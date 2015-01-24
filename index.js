@@ -1,3 +1,4 @@
+var os      = require('os')
 var cont    = require('cont')
 var pull    = require('pull-stream')
 var defer   = require('pull-defer')
@@ -26,13 +27,14 @@ function toArray (h) {
 var Blobs = module.exports = function (dir) {
   var n = 0
   var waiting = [], tmp = false
+  var tmpdir = path.join(os.tmpdir(), 'blobs-'+Date.now()+((Math.random()*1000000)|0))
 
   function mktmp (cb) {
     if(tmp) return cb()
     else waiting.push(cb)
   }
 
-  mkdirp(path.join(dir, 'tmp'), function () {
+  mkdirp(tmpdir, function () {
     tmp = true; while(waiting.length) waiting.shift()()
   })
 
@@ -114,7 +116,7 @@ var Blobs = module.exports = function (dir) {
       var deferred = defer.sink()
 
       mktmp(function () {
-        var tmpfile = path.join(dir, 'tmp', Date.now() + '-' + n++)
+        var tmpfile = path.join(tmpdir, Date.now() + '-' + n++)
         var hasher = createHash()
 
         var ws = write(tmpfile, function (err) {

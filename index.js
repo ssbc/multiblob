@@ -5,6 +5,7 @@ var path    = require('path')
 var toPull  = require('stream-to-pull-stream')
 var explain = require('explain-error')
 var mkdirp  = require('mkdirp')
+var rimraf  = require('rimraf')
 var fs      = require('fs')
 var glob    = require('pull-glob')
 
@@ -25,15 +26,19 @@ function toArray (h) {
 
 var Blobs = module.exports = function (dir) {
   var n = 0
-  var waiting = [], tmp = false
+  var waiting = [], tmp = false, clean = false
 
-  function mktmp (cb) {
+  function init (cb) {
     if(tmp) return cb()
     else waiting.push(cb)
   }
 
-  mkdirp(path.join(dir, 'tmp'), function () {
-    tmp = true; while(waiting.length) waiting.shift()()
+  var tmpdir = path.join(dir, 'tmp')
+
+  rimraf(tmpdir, function () {
+    mkdirp(tmpdir, function () {
+      tmp = true; while(waiting.length) waiting.shift()()
+    })
   })
 
   function has (hash) {
@@ -113,7 +118,7 @@ var Blobs = module.exports = function (dir) {
 
       var deferred = defer.sink()
 
-      mktmp(function () {
+      init(function () {
         var tmpfile = path.join(dir, 'tmp', Date.now() + '-' + n++)
         var hasher = createHash()
 

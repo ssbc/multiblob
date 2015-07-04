@@ -9,7 +9,7 @@ and pull-streams.
 
 var Blobs = require('multiblob')
 
-var blobs = Blobs(dir) //pass in the basedir.
+var blobs = Blobs({dir:dir, alg: 'sha256'}) //pass in the basedir & hash alg
 
 pull(source, blobs.add(function (err, hash) {
   console.log('added source to blobs:', hash)
@@ -17,7 +17,7 @@ pull(source, blobs.add(function (err, hash) {
 
 ```
 
-## api: Blobs(dir)
+## api: Blobs(config)
 
 ### add (hash?, cb?) => Sink
 

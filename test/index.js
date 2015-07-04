@@ -19,8 +19,12 @@ while(l --) random1.push(crypto.randomBytes(1024))
 var l = 100, random2 = []
 while(l --) random2.push(crypto.randomBytes(1024))
 
+
+
+module.exports = function (alg) {
+
 function hasher (ary) {
-  var hasher = util.createHash()
+  var hasher = util.createHash(alg)
   pull(pull.values(ary), hasher, pull.drain())
   return hasher.digest
 }
@@ -28,7 +32,7 @@ function hasher (ary) {
 var hash1 = hasher(random1)
 var hash2 = hasher(random2)
 
-var blobs = Blobs(dirname)
+var blobs = Blobs({dir: dirname, hash: alg})
 
 tape('add, get, has, ls', function (t) {
 
@@ -100,3 +104,8 @@ tape('ls streams the list of hashes', function (t) {
   }))
 
 })
+
+}
+
+if(!module.parent)
+  module.exports('blake2s')

@@ -1,4 +1,6 @@
 var Blake2s = require('blake2s')
+var createHash = require('crypto').createHash
+var hash    = require('crypto')
 var path    = require('path')
 var pull    = require('pull-stream')
 
@@ -12,15 +14,25 @@ exports.toPath = function (dir, hash) {
   return path.join(dir, alg, h.substring(0,2), h.substring(2))
 }
 
-exports.createHash = function (onHash) {
-  var hash = new Blake2s()
+var algs = {
+  blake2s: function () { return new Blake2s() },
+  sha256: function () { return createHash('sha256') }
+}
+
+exports.createHash = function (alg, onHash) {
+  if('function' === typeof alg)
+    onHash = alg, alg = null
+  
+  alg = alg || 'blake2s'
+
+  var hash = algs[alg]()
 
   var hasher = pull.through(function (data) {
     data = isBuffer(data) ? data : new Buffer(data)
     hasher.size += data.length
     hash.update(data)
   }, function () {
-    var digest = hash.digest('base64') + '.blake2s'
+    var digest = hash.digest('base64') + '.' + alg
     hasher.digest = digest
     onHash && onHash(digest)
   })
@@ -35,5 +47,5 @@ function isString (s) {
 }
 
 exports.isHash = function (data) {
-  return isString(data) && /^[A-Za-z0-9\/+]{43}=\.blake2s$/.test(data)
+  return isString(data) && /^[A-Za-z0-9\/+]{43}=\.(?:blake2s|sha256)$/.test(data)
 }

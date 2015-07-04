@@ -24,7 +24,16 @@ function toArray (h) {
   return Array.isArray(h) ? h : [h]
 }
 
-var Blobs = module.exports = function (dir) {
+var Blobs = module.exports = function (config) {
+  var dir
+  if('string' === typeof config)
+    dir = config, config = {dir: dir}
+
+  config = config || {}
+  config.hash = config.hash || 'blake2s'
+
+  dir = config.dir
+
   var n = 0
   var waiting = [], tmp = false, clean = false
 
@@ -120,7 +129,7 @@ var Blobs = module.exports = function (dir) {
 
       init(function () {
         var tmpfile = path.join(dir, 'tmp', Date.now() + '-' + n++)
-        var hasher = createHash()
+        var hasher = createHash(config.hash)
 
         var ws = write(tmpfile, function (err) {
           if(err) return cb(explain(err, 'could not write to tmpfile'))

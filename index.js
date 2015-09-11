@@ -169,6 +169,9 @@ var Blobs = module.exports = function (config) {
     },
     rm: function (hash, cb) {
       fs.unlink(toPath(dir, hash), cb)
+    },
+    resolve: function (hash) {
+      return toPath(dir, hash)
     }
   }
 }

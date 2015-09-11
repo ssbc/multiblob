@@ -30,8 +30,10 @@ if(cmd === 'has')
   })
 
 if(cmd === 'ls' || cmd === 'list')
-  pull(blobs.list(), pull.drain(console.log))
+  pull(blobs.ls(), pull.drain(console.log))
 
 if(cmd === 'hash')
   pull(toPull.source(process.stdin), createHash(console.log), pull.drain())
 
+if(cmd === 'resolve')
+  console.log(blobs.resolve(arg))

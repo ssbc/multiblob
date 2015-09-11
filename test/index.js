@@ -7,8 +7,10 @@ var Blobs = require('../')
 var pull   = require('pull-stream')
 var crypto = require('crypto')
 var rimraf = require('rimraf')
-var path = require('path')
-var osenv = require('osenv')
+var toPull = require('stream-to-pull-stream')
+var fs     = require('fs')
+var path   = require('path')
+var osenv  = require('osenv')
 
 var dirname = path.join(osenv.tmpdir(), 'test-multiblob')
 rimraf.sync(dirname)
@@ -103,6 +105,22 @@ tape('ls streams the list of hashes', function (t) {
 
   }))
 
+})
+
+//sometimes there are apis that need direct access
+//i.e. in electron.
+tape('resolve - direct access to the same file', function (t) {
+  var filename = blobs.resolve(hash1)
+  var hasher = util.createHash(alg)
+  pull(
+    toPull.source(fs.createReadStream(filename)),
+    hasher,
+    pull.drain(null, function (err) {
+      t.notOk(err)
+      t.equal(hasher.digest, hash1)
+      t.end()
+    })
+  )
 })
 
 }

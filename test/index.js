@@ -99,7 +99,23 @@ tape('ls streams the list of hashes', function (t) {
       blobs.ls(),
       pull.collect(function (err, ary) {
         t.deepEqual(ary.sort(), [hash1, hash2].sort())
-        t.end()
+
+
+        pull(
+          blobs.ls({long: true}),
+          pull.collect(function (err, ary) {
+            t.notOk(err)
+            t.equal(ary.length, 2)
+            console.log(ary)
+            t.deepEqual(ary.map(function (e) {
+              t.ok(e.ts < Date.now())
+              t.equal(e.size, 102400)
+              return e.id
+            }).sort(), [hash1, hash2].sort())
+            t.end()
+          })
+        )
+
       })
     )
 

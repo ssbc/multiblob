@@ -8,6 +8,7 @@ var mkdirp  = require('mkdirp')
 var rimraf  = require('rimraf')
 var fs      = require('fs')
 var glob    = require('pull-glob')
+var paramap = require('pull-paramap')
 
 var util    = require('./util')
 var createHash = util.createHash, toPath = util.toPath, isHash = util.isHash
@@ -79,6 +80,12 @@ var Blobs = module.exports = function (config) {
       })
       return cb
     }
+  }
+
+  function toHash(filename) {
+    var parts = filename.replace(dir+'/', '').split('/')
+    var alg = parts.shift()
+    return new Buffer(parts.join(''), 'hex').toString('base64')+'.'+alg
   }
 
 
@@ -156,15 +163,20 @@ var Blobs = module.exports = function (config) {
 
       return deferred
     },
-    ls: function () {
+    ls: function (opts) {
+      var long = opts && (opts.size || opts.long)
       return pull(
         glob(path.join(dir, '*', '*', '*')),
-        pull.map(function (filename) {
-
-          var parts = filename.replace(dir+'/', '').split('/')
-          var alg = parts.shift()
-          return new Buffer(parts.join(''), 'hex').toString('base64')+'.'+alg
-        })
+        long
+        ? paramap(function (filename, cb) {
+            fs.stat(filename, function (err, stat) {
+              console.log(stat)
+              cb(err, {id: toHash(filename), size: stat.size, ts: +stat.ctime})
+            })
+          }, 32)
+        : pull.map(function (filename) {
+            return toHash(filename)
+          })
       )
     },
     rm: function (hash, cb) {

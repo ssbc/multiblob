@@ -19,12 +19,8 @@ var algs = {
   sha256: function () { return createHash('sha256') }
 }
 
-exports.createHash = function (alg, onHash) {
-  if('function' === typeof alg)
-    onHash = alg, alg = null
-  
+exports.createHash = function (alg) {
   alg = alg || 'blake2s'
-
   var hash = algs[alg]()
 
   var hasher = pull.through(function (data) {
@@ -34,11 +30,9 @@ exports.createHash = function (alg, onHash) {
   }, function () {
     var digest = hash.digest('base64') + '.' + alg
     hasher.digest = digest
-    onHash && onHash(digest)
   })
 
   hasher.size = 0
-
   return hasher
 }
 

@@ -170,7 +170,6 @@ var Blobs = module.exports = function (config) {
         long
         ? paramap(function (filename, cb) {
             fs.stat(filename, function (err, stat) {
-              console.log(stat)
               cb(err, {id: toHash(filename), size: stat.size, ts: +stat.ctime})
             })
           }, 32)

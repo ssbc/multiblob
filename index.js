@@ -1,17 +1,19 @@
-var cont    = require('cont')
-var pull    = require('pull-stream')
-var defer   = require('pull-defer')
-var path    = require('path')
-var toPull  = require('stream-to-pull-stream')
-var explain = require('explain-error')
-var mkdirp  = require('mkdirp')
-var rimraf  = require('rimraf')
-var fs      = require('fs')
-var glob    = require('pull-glob')
-var paramap = require('pull-paramap')
+var cont     = require('cont')
+var pull     = require('pull-stream')
+var defer    = require('pull-defer')
+var path     = require('path')
+var toPull   = require('stream-to-pull-stream')
+var explain  = require('explain-error')
+var mkdirp   = require('mkdirp')
+var rimraf   = require('rimraf')
+var fs       = require('fs')
+var glob     = require('pull-glob')
+var paramap  = require('pull-paramap')
+var cat      = require('pull-cat')
+var Notify   = require('pull-notify')
 
-var util    = require('./util')
-var createHash = util.createHash, toPath = util.toPath, isHash = util.isHash
+var u = require('./util')
+var createHash = u.createHash, toPath = u.toPath, isHash = u.isHash
 
 function write (filename, cb) {
   return toPull.sink(fs.createWriteStream(filename), cb)
@@ -29,6 +31,8 @@ var Blobs = module.exports = function (config) {
   var dir
   if('string' === typeof config)
     dir = config, config = {dir: dir}
+
+  var newBlob = Notify()
 
   config = config || {}
   config.hash = config.hash || 'blake2s'
@@ -87,6 +91,8 @@ var Blobs = module.exports = function (config) {
     var alg = parts.shift()
     return new Buffer(parts.join(''), 'hex').toString('base64')+'.'+alg
   }
+
+  var listeners = []
 
 
   return {
@@ -151,7 +157,7 @@ var Blobs = module.exports = function (config) {
 
             fs.rename(tmpfile, p, function (err) {
               if(err) cb(explain(err, 'could not move file'))
-              else    cb(null, hasher.digest)
+              else    newBlob(p), cb(null, hasher.digest)
             })
           })
         })
@@ -164,16 +170,27 @@ var Blobs = module.exports = function (config) {
       return deferred
     },
     ls: function (opts) {
-      var long = opts && (opts.size || opts.long)
+      opts = opts || {}
+      var long = (opts.size || opts.long)
+      var live = opts.live
+      var source = glob(path.join(dir, '*', '*', '*'))
+      if(live)
+        source = cat([
+          source, pull.once({sync: true}), newBlob.listen()
+        ])
+
       return pull(
-        glob(path.join(dir, '*', '*', '*')),
+        source,
         long
         ? paramap(function (filename, cb) {
+            //handle the sync event...
+            if(live && filename.sync) return cb(null, filename)
             fs.stat(filename, function (err, stat) {
               cb(err, {id: toHash(filename), size: stat.size, ts: +stat.ctime})
             })
           }, 32)
         : pull.map(function (filename) {
+            if(live && filename.sync) return filename
             return toHash(filename)
           })
       )

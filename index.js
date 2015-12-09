@@ -139,32 +139,33 @@ var Blobs = module.exports = function (config) {
       }
 
       var deferred = defer.sink()
-
       init(function () {
         var tmpfile = path.join(dir, 'tmp', Date.now() + '-' + n++)
         var hasher = createHash(config.hash)
+        var size = 0
 
-        var ws = write(tmpfile, function (err) {
-          if(err) return cb(explain(err, 'could not write to tmpfile'))
+        deferred.resolve(pull(
+          hasher,
+          pull.through(function (data) {
+            size += data.length
+          }),
+          write(tmpfile, function (err) {
+            if(err) return cb(explain(err, 'could not write to tmpfile'))
 
-          if(hash && hash !== hasher.digest)
-            return cb(new Error('actual hash:'+ hasher.digest
-              + ' did not match expected hash:'+hash), hasher.digest)
+            if(hash && hash !== hasher.digest)
+              return cb(new Error('actual hash:'+ hasher.digest
+                + ' did not match expected hash:'+hash), hasher.digest)
 
-          var p = toPath(dir, hash || hasher.digest)
+            var p = toPath(dir, hash || hasher.digest)
 
-          mkdirp(path.dirname(p), function () {
-
-            fs.rename(tmpfile, p, function (err) {
-              if(err) cb(explain(err, 'could not move file'))
-              else    newBlob(p), cb(null, hasher.digest)
+            mkdirp(path.dirname(p), function () {
+              fs.rename(tmpfile, p, function (err) {
+                if(err) cb(explain(err, 'could not move file'))
+                else    newBlob({id:toHash(p), size: size, ts: Date.now()}), cb(null, hasher.digest)
+              })
             })
           })
-        })
-
-        deferred.resolve(
-          pull(hasher, ws)
-        )
+        ))
       })
 
       return deferred
@@ -172,28 +173,27 @@ var Blobs = module.exports = function (config) {
     ls: function (opts) {
       opts = opts || {}
       var long = (opts.size || opts.long)
-      var live = opts.live
-      var source = glob(path.join(dir, '*', '*', '*'))
-      if(live)
-        source = cat([
-          source, pull.once({sync: true}), newBlob.listen()
-        ])
-
-      return pull(
-        source,
+      var source = pull(
+        glob(path.join(dir, '*', '*', '*')),
         long
         ? paramap(function (filename, cb) {
-            //handle the sync event...
-            if(live && filename.sync) return cb(null, filename)
             fs.stat(filename, function (err, stat) {
               cb(err, {id: toHash(filename), size: stat.size, ts: +stat.ctime})
             })
           }, 32)
-        : pull.map(function (filename) {
-            if(live && filename.sync) return filename
-            return toHash(filename)
-          })
+        : pull.map(toHash)
       )
+
+      if(!opts.live) return source
+
+      return cat([
+        source,
+        pull.once({sync: true}),
+          long
+          ? newBlob.listen()
+          : pull(newBlob.listen(), pull.map(function (e) { return e.id }))
+      ])
+      
     },
     rm: function (hash, cb) {
       fs.unlink(toPath(dir, hash), cb)

@@ -35,7 +35,7 @@ var Blobs = module.exports = function (config) {
   var newBlob = Notify()
 
   config = config || {}
-  config.hash = config.hash || 'blake2s'
+  config.hash = config.hash || config.alg || 'blake2s'
 
   dir = config.dir
 

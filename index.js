@@ -2,7 +2,6 @@ var cont     = require('cont')
 var pull     = require('pull-stream')
 var defer    = require('pull-defer')
 var path     = require('path')
-var toPull   = require('stream-to-pull-stream')
 var explain  = require('explain-error')
 var mkdirp   = require('mkdirp')
 var rimraf   = require('rimraf')
@@ -12,15 +11,20 @@ var paramap  = require('pull-paramap')
 var cat      = require('pull-cat')
 var Notify   = require('pull-notify')
 
+var Write    = require('pull-write-file')
+var Read     = require('pull-file')
+
 var u = require('./util')
 var createHash = u.createHash
 
 function write (filename, cb) {
+  return WriteFile(filename, cb)
   return toPull.sink(fs.createWriteStream(filename), cb)
 }
 
 function read (filename) {
-  return toPull.source(fs.createReadStream(filename))
+  return ReadFile(filename)
+//  return toPull.source(fs.createReadStream(filename))
 }
 
 function toArray (h) {
@@ -108,7 +112,7 @@ var Blobs = module.exports = function (config) {
   return {
     get: function (opts) {
       if(isHash(opts))
-        return read(toPath(dir, opts))
+        return Read(toPath(dir, opts))
 
       var hash = opts.key || opts.hash
       if(!isHash(hash))
@@ -131,7 +135,7 @@ var Blobs = module.exports = function (config) {
           ))
 
         else
-          stream.resolve(read(toPath(dir, hash)))
+          stream.resolve(Read(toPath(dir, hash)))
       })
 
       return stream
@@ -159,7 +163,7 @@ var Blobs = module.exports = function (config) {
           pull.through(function (data) {
             size += data.length
           }),
-          write(tmpfile, function (err) {
+          Write(tmpfile, function (err) {
             if(err) return cb(explain(err, 'could not write to tmpfile'))
 
             var _hash = encode(hasher.digest, alg)
@@ -215,4 +219,5 @@ var Blobs = module.exports = function (config) {
     }
   }
 }
+
 

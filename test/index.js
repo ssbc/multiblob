@@ -7,10 +7,10 @@ var Blobs = require('../')
 var pull   = require('pull-stream')
 var crypto = require('crypto')
 var rimraf = require('rimraf')
-var toPull = require('stream-to-pull-stream')
 var fs     = require('fs')
 var path   = require('path')
 var osenv  = require('osenv')
+var Read   = require('pull-file')
 
 var dirname = path.join(osenv.tmpdir(), 'test-multiblob')
 rimraf.sync(dirname)
@@ -129,7 +129,7 @@ tape('resolve - direct access to the same file', function (t) {
   var filename = blobs.resolve(hash1)
   var hasher = util.createHash(alg)
   pull(
-    toPull.source(fs.createReadStream(filename)),
+    Read(filename),
     hasher,
     pull.drain(null, function (err) {
       t.notOk(err)
@@ -143,3 +143,6 @@ tape('resolve - direct access to the same file', function (t) {
 
 if(!module.parent)
   module.exports('blake2s')
+
+
+

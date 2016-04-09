@@ -16,10 +16,12 @@ rimraf.sync(dirname)
 var l = 100, random1 = []
 while(l --) random1.push(crypto.randomBytes(1024))
 
+module.exports = function (alg) {
+
 function hasher (ary) {
   var hasher = util.createHash()
   pull(pull.values(ary), hasher, pull.drain())
-  return hasher.digest
+  return util.encode(hasher.digest, alg)
 }
 
 var hash1 = hasher(random1)
@@ -45,7 +47,7 @@ tape('hasher exposes size', function (t) {
   var hasher = util.createHash()
   pull(pull.values(random1), hasher, pull.drain())
 
-  t.equal(hasher.digest, hash1)
+  t.equal(util.encode(hasher.digest, alg), hash1)
   t.equal(hasher.size, 1024*100)
   t.end()
 })
@@ -122,4 +124,6 @@ tape('does not error if max is equal', function (t) {
   )
 })
 
+}
 
+if(!module.parent) module.exports('blake2s')

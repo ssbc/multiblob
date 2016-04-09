@@ -6,17 +6,19 @@ var pull    = require('pull-stream')
 
 var isBuffer = Buffer.isBuffer
 
-exports.toPath = function (dir, hash) {
-  var i = hash.indexOf('.')
-  var alg = hash.substring(i+1)
-
-  var h = new Buffer(hash.substring(0, i), 'base64').toString('hex')
-  return path.join(dir, alg, h.substring(0,2), h.substring(2))
-}
-
 var algs = {
   blake2s: function () { return new Blake2s() },
   sha256: function () { return createHash('sha256') }
+}
+
+exports.encode = function (buf, alg) {
+  return buf.toString('base64')+'.'+alg
+}
+
+exports.decode = function (str) {
+  var i = str.indexOf('.')
+  var alg = str.substring(i+1)
+  return {hash: new Buffer(str.substring(0, i), 'base64'), alg: alg}
 }
 
 exports.createHash = function (alg) {
@@ -28,8 +30,9 @@ exports.createHash = function (alg) {
     hasher.size += data.length
     hash.update(data)
   }, function () {
-    var digest = hash.digest('base64') + '.' + alg
-    hasher.digest = digest
+    hasher.digest = hash.digest()
+//    var digest = hash.digest('base64') + '.' + alg
+//    hasher.digest = digest
   })
 
   hasher.size = 0
@@ -43,3 +46,4 @@ function isString (s) {
 exports.isHash = function (data) {
   return isString(data) && /^[A-Za-z0-9\/+]{43}=\.(?:blake2s|sha256)$/.test(data)
 }
+

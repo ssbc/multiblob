@@ -13,7 +13,7 @@ var cat      = require('pull-cat')
 var Notify   = require('pull-notify')
 
 var u = require('./util')
-var createHash = u.createHash, toPath = u.toPath, isHash = u.isHash
+var createHash = u.createHash
 
 function write (filename, cb) {
   return toPull.sink(fs.createWriteStream(filename), cb)
@@ -32,10 +32,26 @@ var Blobs = module.exports = function (config) {
   if('string' === typeof config)
     dir = config, config = {dir: dir}
 
+  var encode = config.encode || u.encode
+  var decode = config.decode || u.decode
+  var isHash = config.isHash || u.isHash
+
+  function toPath (dir, string) {
+    var d = decode(string)
+    var h = d.hash.toString('hex')
+    return path.join(dir, d.alg, h.substring(0,2), h.substring(2))
+  }
+
+  function toHash(filename) {
+    var parts = path.relative(dir, filename).split(path.sep)
+    var alg = parts.shift()
+    return encode(new Buffer(parts.join(''), 'hex'), alg)
+  }
+
   var newBlob = Notify()
 
   config = config || {}
-  config.hash = config.hash || config.alg || 'blake2s'
+  var alg = config.hash = config.hash || config.alg || 'blake2s'
 
   dir = config.dir
 
@@ -84,12 +100,6 @@ var Blobs = module.exports = function (config) {
       })
       return cb
     }
-  }
-
-  function toHash(filename) {
-    var parts = filename.replace(dir+'/', '').split('/')
-    var alg = parts.shift()
-    return new Buffer(parts.join(''), 'hex').toString('base64')+'.'+alg
   }
 
   var listeners = []
@@ -141,7 +151,7 @@ var Blobs = module.exports = function (config) {
       var deferred = defer.sink()
       init(function () {
         var tmpfile = path.join(dir, 'tmp', Date.now() + '-' + n++)
-        var hasher = createHash(config.hash)
+        var hasher = createHash(alg)
         var size = 0
 
         deferred.resolve(pull(
@@ -152,16 +162,18 @@ var Blobs = module.exports = function (config) {
           write(tmpfile, function (err) {
             if(err) return cb(explain(err, 'could not write to tmpfile'))
 
-            if(hash && hash !== hasher.digest)
-              return cb(new Error('actual hash:'+ hasher.digest
-                + ' did not match expected hash:'+hash), hasher.digest)
+            var _hash = encode(hasher.digest, alg)
 
-            var p = toPath(dir, hash || hasher.digest)
+            if(hash && hash !== _hash)
+              return cb(new Error('actual hash:'+ _hash
+                + ' did not match expected hash:'+hash), _hash)
+
+            var p = toPath(dir, hash || _hash)
 
             mkdirp(path.dirname(p), function () {
               fs.rename(tmpfile, p, function (err) {
                 if(err) cb(explain(err, 'could not move file'))
-                else    newBlob({id:toHash(p), size: size, ts: Date.now()}), cb(null, hasher.digest)
+                else    newBlob({id:toHash(p), size: size, ts: Date.now()}), cb(null, _hash)
               })
             })
           })
@@ -203,3 +215,4 @@ var Blobs = module.exports = function (config) {
     }
   }
 }
+

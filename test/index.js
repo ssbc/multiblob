@@ -28,7 +28,7 @@ module.exports = function (alg) {
 function hasher (ary) {
   var hasher = util.createHash(alg)
   pull(pull.values(ary), hasher, pull.drain())
-  return hasher.digest
+  return util.encode(hasher.digest, alg)
 }
 
 var hash1 = hasher(random1)
@@ -133,7 +133,7 @@ tape('resolve - direct access to the same file', function (t) {
     hasher,
     pull.drain(null, function (err) {
       t.notOk(err)
-      t.equal(hasher.digest, hash1)
+      t.equal(util.encode(hasher.digest, alg), hash1)
       t.end()
     })
   )

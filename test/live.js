@@ -18,10 +18,12 @@ while(l --) random1.push(crypto.randomBytes(1024))
 
 var random2 = random1.slice().reverse()
 
+module.exports = function (alg) {
+
 function hasher (ary) {
-  var hasher = util.createHash()
+  var hasher = util.createHash(alg, true)
   pull(pull.values(ary), hasher, pull.drain())
-  return hasher.digest
+  return util.encode(hasher.digest, alg)
 }
 
 var hash1 = hasher(random1)
@@ -75,3 +77,7 @@ tape('live stream', function (t) {
     })
   )
 })
+
+}
+
+if(!module.parent) module.exports('blake2s')

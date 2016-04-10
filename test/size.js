@@ -19,7 +19,7 @@ while(l --) random1.push(crypto.randomBytes(1024))
 module.exports = function (alg) {
 
 function hasher (ary) {
-  var hasher = util.createHash()
+  var hasher = util.createHash(alg, true)
   pull(pull.values(ary), hasher, pull.drain())
   return util.encode(hasher.digest, alg)
 }
@@ -44,7 +44,7 @@ tape('add, size', function (t) {
 })
 
 tape('hasher exposes size', function (t) {
-  var hasher = util.createHash()
+  var hasher = util.createHash(alg, true)
   pull(pull.values(random1), hasher, pull.drain())
 
   t.equal(util.encode(hasher.digest, alg), hash1)
@@ -81,6 +81,7 @@ tape('errors if requested size too small', function (t) {
 })
 
 tape('does not error if size is correct', function (t) {
+  console.log(hash1)
   pull(
     blobs.get({key: hash1, size: 1024*100}),
     pull.collect(function (err, arys) {
@@ -114,6 +115,7 @@ tape('does not error if max is greater', function (t) {
 })
 
 tape('does not error if max is equal', function (t) {
+  console.log(hash1)
   pull(
     blobs.get({key: hash1, max: 1024*100}),
     pull.collect(function (err, arys) {

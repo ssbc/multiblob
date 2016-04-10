@@ -26,7 +26,7 @@ while(l --) random2.push(crypto.randomBytes(1024))
 module.exports = function (alg) {
 
 function hasher (ary) {
-  var hasher = util.createHash(alg)
+  var hasher = util.createHash(alg, true)
   pull(pull.values(ary), hasher, pull.drain())
   return util.encode(hasher.digest, alg)
 }
@@ -127,7 +127,7 @@ tape('ls streams the list of hashes', function (t) {
 //i.e. in electron.
 tape('resolve - direct access to the same file', function (t) {
   var filename = blobs.resolve(hash1)
-  var hasher = util.createHash(alg)
+  var hasher = util.createHash(alg, true)
   pull(
     Read(filename),
     hasher,

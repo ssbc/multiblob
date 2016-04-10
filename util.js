@@ -12,6 +12,7 @@ var algs = {
 }
 
 exports.encode = function (buf, alg) {
+  if(!isBuffer(buf)) throw new Error('hash should be a buffer, was:'+buf)
   return buf.toString('base64')+'.'+alg
 }
 
@@ -21,7 +22,7 @@ exports.decode = function (str) {
   return {hash: new Buffer(str.substring(0, i), 'base64'), alg: alg}
 }
 
-exports.createHash = function (alg) {
+exports.createHash = function (alg, noCompat) {
   alg = alg || 'blake2s'
   var hash = algs[alg]()
 
@@ -30,8 +31,7 @@ exports.createHash = function (alg) {
     hasher.size += data.length
     hash.update(data)
   }, function () {
-    hasher.digest = hash.digest()
-//    var digest = hash.digest('base64') + '.' + alg
+    return hasher.digest = noCompat === true ? hash.digest() : hash.digest('base64') + '.' + alg
 //    hasher.digest = digest
   })
 
@@ -46,4 +46,5 @@ function isString (s) {
 exports.isHash = function (data) {
   return isString(data) && /^[A-Za-z0-9\/+]{43}=\.(?:blake2s|sha256)$/.test(data)
 }
+
 

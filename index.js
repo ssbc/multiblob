@@ -155,7 +155,7 @@ var Blobs = module.exports = function (config) {
       var deferred = defer.sink()
       init(function () {
         var tmpfile = path.join(dir, 'tmp', Date.now() + '-' + n++)
-        var hasher = createHash(alg)
+        var hasher = createHash(alg, true)
         var size = 0
 
         deferred.resolve(pull(

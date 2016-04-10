@@ -1,7 +1,7 @@
 {
   "name": "multiblob",
   "description": "",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "homepage": "https://github.com/dominictarr/multiblob",
   "repository": {
     "type": "git",
@@ -34,4 +34,3 @@
   "author": "Dominic Tarr <dominic.tarr@gmail.com> (http://dominictarr.com)",
   "license": "MIT"
 }
-

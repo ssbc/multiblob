@@ -160,8 +160,10 @@ var Blobs = module.exports = function (config) {
 
         deferred.resolve(pull(
           hasher,
-          pull.through(function (data) {
+          pull.map(function (data) {
+            if('string' === typeof data) data = new Buffer(data, 'utf8')
             size += data.length
+            return data
           }),
           Write(tmpfile, function (err) {
             if(err) return cb(explain(err, 'could not write to tmpfile'))
@@ -188,8 +190,15 @@ var Blobs = module.exports = function (config) {
     },
     ls: function (opts) {
       opts = opts || {}
+      var isOld = opts.old !== false
+      var isLive = opts.live === true || opts.old === false
+
+      if(!isLive && !isOld)
+        throw new Error('ls with neither old or new is empty')
+
       var long = (opts.size || opts.long)
-      var source = pull(
+
+      var old = pull(
         glob(path.join(dir, '*', '*', '*')),
         long
         ? paramap(function (filename, cb) {
@@ -200,16 +209,16 @@ var Blobs = module.exports = function (config) {
         : pull.map(toHash)
       )
 
-      if(!opts.live) return source
+      if(!isLive) return old
 
-      return cat([
-        source,
-        pull.once({sync: true}),
-          long
+      var live = long
           ? newBlob.listen()
           : pull(newBlob.listen(), pull.map(function (e) { return e.id }))
-      ])
-      
+
+      if(!isOld) return live
+
+      //old & live
+      return cat([old, pull.once({sync: true}), live])
     },
     rm: function (hash, cb) {
       fs.unlink(toPath(dir, hash), cb)
@@ -219,5 +228,11 @@ var Blobs = module.exports = function (config) {
     }
   }
 }
+
+
+
+
+
+
 
 

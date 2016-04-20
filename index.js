@@ -31,6 +31,34 @@ function toArray (h) {
   return Array.isArray(h) ? h : [h]
 }
 
+function single (fn) {
+  var waiting = {}
+  function async (key, cb) {
+    if(!waiting[key]) {
+      waiting[key] = [cb]
+      var cbs = waiting[key]
+      fn(key, function done (err, result) {
+        if(cbs.length)
+        delete waiting[key]
+        while(cbs.length) cbs.shift()(err, result)
+      })
+    }
+    else
+      waiting[value].push(cb)
+  }
+
+  //dump all the things that have been done already,
+  //when something has been added?
+  async.done = function (key, err, value) {
+    if(!waiting[key]) return
+    var cbs = waiting[key]
+    delete waiting[key]
+    while(cbs.length) cbs.shift()(err, result)
+  }
+
+  return async
+}
+
 var Blobs = module.exports = function (config) {
   var dir
   if('string' === typeof config)
@@ -67,6 +95,8 @@ var Blobs = module.exports = function (config) {
     else waiting.push(cb)
   }
 
+  var stat = single(fs.stat)
+
   var tmpdir = path.join(dir, 'tmp')
 
   rimraf(tmpdir, function () {
@@ -75,9 +105,14 @@ var Blobs = module.exports = function (config) {
     })
   })
 
+  function toMeta(hash, stat) {
+    if(!stat) return null
+    return {id: hash, size: stat.size, ts: +stat.ctime}
+  }
+
   function has (hash) {
     return function (cb) {
-      fs.stat(toPath(dir, hash), function (err, stat) {
+      stat(toPath(dir, hash), function (err, stat) {
         cb(null, !!stat)
       })
     }
@@ -85,10 +120,16 @@ var Blobs = module.exports = function (config) {
 
   function size (hash) {
     return function (cb) {
-      fs.stat(toPath(dir, hash), function (err, stat) {
+      stat(toPath(dir, hash), function (err, stat) {
         cb(null, stat ? stat.size : null)
       })
     }
+  }
+
+  var meta = function (hash, cb) {
+    stat(toPath(dir, hash), function (err, stat) {
+      cb(err, toMeta(hash, stat))
+    })
   }
 
   function createTester (test) {
@@ -108,7 +149,6 @@ var Blobs = module.exports = function (config) {
 
   var listeners = []
 
-
   return {
     get: function (opts) {
       if(isHash(opts))
@@ -121,7 +161,7 @@ var Blobs = module.exports = function (config) {
         ))
 
       var stream = defer.source()
-      fs.stat(toPath(dir, hash), function (err, stat) {
+      stat(toPath(dir, hash), function (err, stat) {
         if(opts.size != null && opts.size !== stat.size)
           stream.abort(new Error('incorrect file length,'
             + ' requested:' + opts.size + ' file was:' + stat.size
@@ -144,6 +184,7 @@ var Blobs = module.exports = function (config) {
     size: createTester(size),
 
     has: createTester(has),
+    meta: meta,
 
     add: function (hash, cb) {
       if(!cb) cb = hash, hash = null
@@ -196,17 +237,14 @@ var Blobs = module.exports = function (config) {
       if(!isLive && !isOld)
         throw new Error('ls with neither old or new is empty')
 
-      var long = (opts.size || opts.long)
-
+      var long = (opts.size || opts.long || opts.meta)
       var old = pull(
         glob(path.join(dir, '*', '*', '*')),
-        long
-        ? paramap(function (filename, cb) {
-            fs.stat(filename, function (err, stat) {
-              cb(err, {id: toHash(filename), size: stat.size, ts: +stat.ctime})
-            })
-          }, 32)
-        : pull.map(toHash)
+        long ? paramap(function (filename, cb) {
+          stat(filename, function (err, stat) {
+            cb(err, toMeta(toHash(filename), stat))
+          })
+        }, 32) : pull.map(toHash)
       )
 
       if(!isLive) return old
@@ -228,11 +266,4 @@ var Blobs = module.exports = function (config) {
     }
   }
 }
-
-
-
-
-
-
-
 

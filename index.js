@@ -19,12 +19,10 @@ var createHash = u.createHash
 
 function write (filename, cb) {
   return WriteFile(filename, cb)
-  return toPull.sink(fs.createWriteStream(filename), cb)
 }
 
 function read (filename) {
   return ReadFile(filename)
-//  return toPull.source(fs.createReadStream(filename))
 }
 
 function toArray (h) {
@@ -44,7 +42,7 @@ function single (fn) {
       })
     }
     else
-      waiting[value].push(cb)
+      waiting[key].push(cb)
   }
 
   //dump all the things that have been done already,
@@ -187,10 +185,10 @@ var Blobs = module.exports = function (config) {
     meta: meta,
 
     add: function (hash, cb) {
-      if(!cb) cb = hash, hash = null
+      if('function' === typeof hash) cb = hash, hash = null
 
       if(!cb) cb = function (err) {
-        if(err) explain(err, 'no callback provided')
+        if(err) throw explain(err, 'no callback provided')
       }
 
       var deferred = defer.sink()
@@ -266,4 +264,5 @@ var Blobs = module.exports = function (config) {
     }
   }
 }
+
 

@@ -10,7 +10,7 @@ var glob     = require('pull-glob')
 var paramap  = require('pull-paramap')
 var cat      = require('pull-cat')
 var Notify   = require('pull-notify')
-
+var Live     = require('pull-live')
 var Write    = require('pull-write-file')
 var Read     = require('pull-file')
 
@@ -227,16 +227,10 @@ var Blobs = module.exports = function (config) {
 
       return deferred
     },
-    ls: function (opts) {
-      opts = opts || {}
-      var isOld = opts.old !== false
-      var isLive = opts.live === true || opts.old === false
 
-      if(!isLive && !isOld)
-        throw new Error('ls with neither old or new is empty')
-
+    ls: Live(function old (opts) {
       var long = (opts.size || opts.long || opts.meta)
-      var old = pull(
+      return pull(
         glob(path.join(dir, '*', '*', '*')),
         long ? paramap(function (filename, cb) {
           stat(filename, function (err, stat) {
@@ -244,25 +238,20 @@ var Blobs = module.exports = function (config) {
           })
         }, 32) : pull.map(toHash)
       )
-
-      if(!isLive) return old
-
-      var live = long
+    }, function live (opts) {
+      var long = (opts.size || opts.long || opts.meta)
+      return long
           ? newBlob.listen()
           : pull(newBlob.listen(), pull.map(function (e) { return e.id }))
+    }),
 
-      if(!isOld) return live
-
-      //old & live
-      return cat([old, pull.once({sync: true}), live])
-    },
     rm: function (hash, cb) {
       fs.unlink(toPath(dir, hash), cb)
     },
+
     resolve: function (hash) {
       return toPath(dir, hash)
     }
   }
 }
-
 

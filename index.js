@@ -67,6 +67,7 @@ var Blobs = module.exports = function (config) {
   var isHash = config.isHash || u.isHash
 
   function toPath (dir, string) {
+    if(!string || !isHash(string)) return false
     var d = decode(string)
     var h = d.hash.toString('hex')
     return path.join(dir, d.alg, h.substring(0,2), h.substring(2))
@@ -110,7 +111,10 @@ var Blobs = module.exports = function (config) {
 
   function has (hash) {
     return function (cb) {
-      stat(toPath(dir, hash), function (err, stat) {
+      var p = toPath(dir, hash)
+      console.log('HAS', p, dir, hash, isHash, toPath)
+      if(!p) return cb(new Error('not a valid blob hash:'+hash))
+      stat(p, function (err, stat) {
         cb(null, !!stat)
       })
     }
@@ -118,7 +122,9 @@ var Blobs = module.exports = function (config) {
 
   function size (hash) {
     return function (cb) {
-      stat(toPath(dir, hash), function (err, stat) {
+      var p = toPath(dir, hash)
+      if(!p) return cb(new Error('not a valid blob hash:'+hash))
+      stat(p, function (err, stat) {
         cb(null, stat ? stat.size : null)
       })
     }
@@ -133,13 +139,23 @@ var Blobs = module.exports = function (config) {
   function createTester (test) {
     return function (hashes, cb) {
       var n = !Array.isArray(hashes)
-      cont.para(toArray(hashes).map(test)) (function (_, ary) {
+      //check if any hashes are invalid.
+      var invalid
+      if(n ? !isHash(hashes) : !hashes.every(function (h) {
+        if(!isHash(h)) invalid = h
+        else return true
+      }))
+        return cb(new Error('not a valid hash:'+invalid))
+        
+      cont.para(toArray(hashes).map(test)) (function (err, ary) {
+        //will give an error if any hash was invalid.
+        if(err) cb(err)
         // This will only error if the hash is not present,
         // so never callback an error.
         // PS. if you have a situation where you never error
         // add a comment like this one to explain why.
-        if(n) cb(null, ary[0])
-        else  cb(null, ary)
+        else if(n) cb(null, ary[0])
+        else       cb(null, ary)
       })
       return cb
     }
@@ -189,6 +205,14 @@ var Blobs = module.exports = function (config) {
 
       if(!cb) cb = function (err) {
         if(err) throw explain(err, 'no callback provided')
+      }
+
+      if(hash && !isHash(hash)) {
+        //abort input stream and callback once source is aborted.
+        var err = new Error('not a valid hash:'+hash)
+        return function (read) {
+          read(err, cb)
+        }
       }
 
       var deferred = defer.sink()
@@ -246,10 +270,12 @@ var Blobs = module.exports = function (config) {
     }),
 
     rm: function (hash, cb) {
-      fs.unlink(toPath(dir, hash), cb)
+      if(!isHash(hash)) cb(new Error('not valid hash:'+hash))
+      else              fs.unlink(toPath(dir, hash), cb)
     },
 
     resolve: function (hash) {
+      if(!isHash(hash)) throw new Error('not valid hash:'+hash)
       return toPath(dir, hash)
     }
   }

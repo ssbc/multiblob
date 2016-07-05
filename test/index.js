@@ -43,7 +43,8 @@ module.exports = function (alg) {
       blobs.add(function (err, hash) {
         if(err) throw err
         t.equal(hash, hash1)
-        blobs.has(hash, function (_, has) {
+        blobs.has(hash, function (err, has) {
+          if(err) throw err
           t.ok(has)
           t.end()
         })
@@ -84,7 +85,8 @@ module.exports = function (alg) {
   })
 
   tape('has can take array', function (t) {
-    blobs.has([hash1, hash2], function (_, ary) {
+    blobs.has([hash1, hash2], function (err, ary) {
+      if(err) throw err
       t.deepEqual(ary, [true, false])
       t.end()
     })
@@ -137,7 +139,7 @@ module.exports = function (alg) {
     }))
 
   })
-  return
+
   //sometimes there are apis that need direct access
   //i.e. in electron.
   tape('resolve - direct access to the same file', function (t) {
@@ -154,10 +156,20 @@ module.exports = function (alg) {
     )
   })
 
+  tape('error if a a request is not a valid hash', function (t) {
+    blobs.has('NOT A HASH', function (err) {
+      console.log(err)
+      t.ok(err)
+      t.end()
+    })
+
+  })
+
 }
 
 if(!module.parent)
   module.exports('blake2s')
+
 
 
 

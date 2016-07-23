@@ -112,7 +112,6 @@ var Blobs = module.exports = function (config) {
   function has (hash) {
     return function (cb) {
       var p = toPath(dir, hash)
-      console.log('HAS', p, dir, hash, isHash, toPath)
       if(!p) return cb(new Error('not a valid blob hash:'+hash))
       stat(p, function (err, stat) {
         cb(null, !!stat)
@@ -280,4 +279,5 @@ var Blobs = module.exports = function (config) {
     }
   }
 }
+
 

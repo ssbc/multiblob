@@ -175,8 +175,10 @@ var Blobs = module.exports = function (config) {
 
       var stream = defer.source()
       stat(toPath(dir, hash), function (err, stat) {
-        if(err) return cb(err)
-        if(opts.size != null && opts.size !== stat.size)
+        if(err)
+          stream.abort(explain(err, 'stat failed'))
+
+        else if(opts.size != null && opts.size !== stat.size)
           stream.abort(new Error('incorrect file length,'
             + ' requested:' + opts.size + ' file was:' + stat.size
             + ' for file:' + hash

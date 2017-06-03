@@ -35,6 +35,14 @@ If the argument is an `opts` object, with the `key: hash` property,
 retrive that blob, but error if the size does not exactly match the
 `size` property, or is over `max` property (in bytes)
 
+### getSlice (opts) => Source
+
+create a source stream that reads a slice of a given blob,
+from the `start` property to the `end` property, in bytes.
+Error if the file does not exist or if
+the size of the whole blob does not exactly match the
+`size` property, or is over `max` property (in bytes).
+
 ### has(hash, cb)
 
 check if the given hash is in the store.

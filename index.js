@@ -162,6 +162,35 @@ var Blobs = module.exports = function (config) {
 
   var listeners = []
 
+  function getSlice(opts) {
+    var stream = defer.source()
+    stat(toPath(dir, opts.hash), function (err, stat) {
+      if(err)
+        stream.abort(explain(err, 'stat failed'))
+
+      else if(opts.size != null && opts.size !== stat.size)
+        stream.abort(new Error('incorrect file length,'
+          + ' requested:' + opts.size + ' file was:' + stat.size
+          + ' for file:' + opts.hash
+        ))
+
+      else if(opts.max != null && opts.max < stat.size)
+        stream.abort(new Error('incorrect file length,'
+          + ' requested:' + opts.size + ' file was:' + stat.size
+          + ' for file:' + opts.hash
+        ))
+
+      else
+        stream.resolve(Read(toPath(dir, opts.hash), {
+          start: opts.start,
+          end: opts.end
+        }))
+    })
+
+    return stream
+  }
+
+
   return {
     get: function (opts) {
       if(isHash(opts))
@@ -173,28 +202,26 @@ var Blobs = module.exports = function (config) {
           'multiblob.get: {hash} is mandatory'
         ))
 
-      var stream = defer.source()
-      stat(toPath(dir, hash), function (err, stat) {
-        if(err)
-          stream.abort(explain(err, 'stat failed'))
+      return getSlice({hash: hash, size: opts.size, max: opts.max})
+    },
 
-        else if(opts.size != null && opts.size !== stat.size)
-          stream.abort(new Error('incorrect file length,'
-            + ' requested:' + opts.size + ' file was:' + stat.size
-            + ' for file:' + hash
-          ))
+    getSlice: function (opts) {
+      if(!isHash(opts.hash))
+        return pull.error(new Error(
+          'multiblob.getSlice: {hash} is mandatory'
+        ))
 
-        else if(opts.max != null && opts.max < stat.size)
-          stream.abort(new Error('incorrect file length,'
-            + ' requested:' + opts.size + ' file was:' + stat.size
-            + ' for file:' + hash
-          ))
+      if(isNaN(opts.start))
+        return pull.error(new Error(
+          'multiblob.getSlice: {start} must be a number'
+        ))
 
-        else
-          stream.resolve(Read(toPath(dir, hash)))
-      })
+      if(isNaN(opts.end))
+        return pull.error(new Error(
+          'multiblob.getSlice: {end} must be a number'
+        ))
 
-      return stream
+      return getSlice(opts)
     },
 
     size: createTester(size),

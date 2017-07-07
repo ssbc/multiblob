@@ -53,7 +53,7 @@ tape('hasher exposes size', function (t) {
 })
 
 tape('size of missing hash is null', function (t) {
-  blobs.size(hasher([]), function (_, size) {
+  blobs.size(hasher(['abc']), function (_, size) {
     t.equal(size, null)
     t.end()
   })

@@ -170,6 +170,7 @@ module.exports = function (alg) {
     hasher(function (_, cb) { cb(true) })(null, function () {})
     var empty = util.encode(hasher.digest, alg)
     console.log(empty)
+    t.ok(blobs.isEmptyHash(empty))
     blobs.has(empty, function (err, has) {
       if(err) throw err
       t.ok(has)

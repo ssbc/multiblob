@@ -47,4 +47,4 @@ exports.isHash = function (data) {
   return isString(data) && /^[A-Za-z0-9\/+]{43}=\.(?:blake2s|sha256)$/.test(data)
 }
 
-
+exports.algs = algs

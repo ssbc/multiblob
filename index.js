@@ -84,6 +84,8 @@ var Blobs = module.exports = function (config) {
   config = config || {}
   var alg = config.hash = config.hash || config.alg || 'blake2s'
 
+  var empty = u.encode(u.algs[alg]().digest(), alg)
+
   dir = config.dir
 
   var n = 0
@@ -111,6 +113,7 @@ var Blobs = module.exports = function (config) {
 
   function has (hash) {
     return function (cb) {
+      if(hash === empty) return cb(null, true)
       var p = toPath(dir, hash)
       if(!p) return cb(new Error('not a valid blob hash:'+hash))
       stat(p, function (err, stat) {
@@ -121,6 +124,7 @@ var Blobs = module.exports = function (config) {
 
   function size (hash) {
     return function (cb) {
+      if(hash === empty) return cb(null, 0)
       var p = toPath(dir, hash)
       if(!p) return cb(new Error('not a valid blob hash:'+hash))
       stat(p, function (err, stat) {
@@ -163,6 +167,8 @@ var Blobs = module.exports = function (config) {
   var listeners = []
 
   function getSlice(opts) {
+    if(opts.hash === empty) return pull.empty()
+
     var stream = defer.source()
     stat(toPath(dir, opts.hash), function (err, stat) {
       if(err)
@@ -193,9 +199,10 @@ var Blobs = module.exports = function (config) {
 
   return {
     get: function (opts) {
-      if(isHash(opts))
+      if(isHash(opts)) {
+        if(opts === empty) return pull.empty()
         return Read(toPath(dir, opts))
-
+      }
       var hash = opts.key || opts.hash
       if(!isHash(hash))
         return pull.error(new Error(
@@ -309,5 +316,4 @@ var Blobs = module.exports = function (config) {
     }
   }
 }
-
 

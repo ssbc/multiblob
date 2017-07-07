@@ -64,6 +64,12 @@ source stream that reads the list of hashes available in the store.
 
 remove a hash from the store.
 
+### isEmptyHash(hash)
+
+Check if a given hash is actually the empty hash. If something has the empty hash,
+that is probably a bug. The above methods will act like the empty file is already in the store.
+
+
 ## todo
 
 maybe emit events when blobs are stored?

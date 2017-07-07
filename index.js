@@ -172,7 +172,7 @@ var Blobs = module.exports = function (config) {
   var listeners = []
 
   function getSlice(opts) {
-    if(isEmptyHash(hash)) return pull.empty()
+    if(isEmptyHash(opts.hash)) return pull.empty()
 
     var stream = defer.source()
     stat(toPath(dir, opts.hash), function (err, stat) {

@@ -165,10 +165,30 @@ module.exports = function (alg) {
 
   })
 
+  tape('hash of empty string', function (t) {
+    var hasher = util.createHash(alg, true)
+    hasher(function (_, cb) { cb(true) })(null, function () {})
+    var empty = util.encode(hasher.digest, alg)
+    console.log(empty)
+    blobs.has(empty, function (err, has) {
+      if(err) throw err
+      t.ok(has)
+      blobs.size(empty, function (err, zero) {
+        if(err) throw err
+        t.equal(zero, 0)
+        pull(blobs.get(empty), pull.collect(function (err, ary) {
+          t.deepEqual(Buffer.concat(ary), new Buffer(0))
+          t.end()
+        }))
+      })
+    })
+  })
+
 }
 
 if(!module.parent)
   module.exports('blake2s')
+
 
 
 

@@ -84,6 +84,12 @@ var Blobs = module.exports = function (config) {
   config = config || {}
   var alg = config.hash = config.hash || config.alg || 'blake2s'
 
+  var empty = u.encode(u.algs[alg]().digest(), alg)
+
+  function isEmptyHash(hash) {
+    return empty === hash
+  }
+
   dir = config.dir
 
   var n = 0
@@ -111,6 +117,7 @@ var Blobs = module.exports = function (config) {
 
   function has (hash) {
     return function (cb) {
+      if(isEmptyHash(hash)) return cb(null, true)
       var p = toPath(dir, hash)
       if(!p) return cb(new Error('not a valid blob hash:'+hash))
       stat(p, function (err, stat) {
@@ -121,6 +128,7 @@ var Blobs = module.exports = function (config) {
 
   function size (hash) {
     return function (cb) {
+      if(isEmptyHash(hash)) return cb(null, 0)
       var p = toPath(dir, hash)
       if(!p) return cb(new Error('not a valid blob hash:'+hash))
       stat(p, function (err, stat) {
@@ -130,6 +138,7 @@ var Blobs = module.exports = function (config) {
   }
 
   var meta = function (hash, cb) {
+    if(isEmptyHash(hash)) return cb(null, {id: hash, size: 0, ts: 0})
     stat(toPath(dir, hash), function (err, stat) {
       cb(err, toMeta(hash, stat))
     })
@@ -162,36 +171,70 @@ var Blobs = module.exports = function (config) {
 
   var listeners = []
 
+  function getSlice(opts) {
+    if(isEmptyHash(opts.hash)) return pull.empty()
+
+    var stream = defer.source()
+    stat(toPath(dir, opts.hash), function (err, stat) {
+      if(err)
+        stream.abort(explain(err, 'stat failed'))
+
+      else if(opts.size != null && opts.size !== stat.size)
+        stream.abort(new Error('incorrect file length,'
+          + ' requested:' + opts.size + ' file was:' + stat.size
+          + ' for file:' + opts.hash
+        ))
+
+      else if(opts.max != null && opts.max < stat.size)
+        stream.abort(new Error('incorrect file length,'
+          + ' requested:' + opts.size + ' file was:' + stat.size
+          + ' for file:' + opts.hash
+        ))
+
+      else
+        stream.resolve(Read(toPath(dir, opts.hash), {
+          start: opts.start,
+          end: opts.end
+        }))
+    })
+
+    return stream
+  }
+
+
   return {
     get: function (opts) {
-      if(isHash(opts))
+      if(isHash(opts)) {
+        if(isEmptyHash(hash)) return pull.empty()
         return Read(toPath(dir, opts))
-
+      }
       var hash = opts.key || opts.hash
       if(!isHash(hash))
         return pull.error(new Error(
           'multiblob.get: {hash} is mandatory'
         ))
 
-      var stream = defer.source()
-      stat(toPath(dir, hash), function (err, stat) {
-        if(opts.size != null && opts.size !== stat.size)
-          stream.abort(new Error('incorrect file length,'
-            + ' requested:' + opts.size + ' file was:' + stat.size
-            + ' for file:' + hash
-          ))
+      return getSlice({hash: hash, size: opts.size, max: opts.max})
+    },
+    isEmptyHash: isEmptyHash,
 
-        else if(opts.max != null && opts.max < stat.size)
-          stream.abort(new Error('incorrect file length,'
-            + ' requested:' + opts.size + ' file was:' + stat.size
-            + ' for file:' + hash
-          ))
+    getSlice: function (opts) {
+      if(!isHash(opts.hash))
+        return pull.error(new Error(
+          'multiblob.getSlice: {hash} is mandatory'
+        ))
 
-        else
-          stream.resolve(Read(toPath(dir, hash)))
-      })
+      if(isNaN(opts.start))
+        return pull.error(new Error(
+          'multiblob.getSlice: {start} must be a number'
+        ))
 
-      return stream
+      if(isNaN(opts.end))
+        return pull.error(new Error(
+          'multiblob.getSlice: {end} must be a number'
+        ))
+
+      return getSlice(opts)
     },
 
     size: createTester(size),

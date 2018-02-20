@@ -17,12 +17,13 @@
     "pull-file": "^0.5.0",
     "pull-glob": "~1.0.6",
     "pull-live": "^1.0.0",
-    "pull-notify": "0.0.2",
-    "pull-paramap": "^1.1.4",
-    "pull-stream": "^3.3.0",
+    "pull-notify": "^0.1.1",
+    "pull-paramap": "^1.2.2",
+    "pull-stream": "^3.6.2",
     "pull-write-file": "^0.2.1",
     "rc": "~0.5.4",
-    "rimraf": "~2.2.8"
+    "rimraf": "~2.2.8",
+    "stream-to-pull-stream": "^1.7.2"
   },
   "devDependencies": {
     "tape": "~3.0.3",

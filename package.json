@@ -21,7 +21,7 @@
     "pull-paramap": "^1.2.2",
     "pull-stream": "^3.6.2",
     "pull-write-file": "^0.2.1",
-    "rc": "~0.5.4",
+    "rc": "~1.2.8",
     "rimraf": "~2.2.8",
     "stream-to-pull-stream": "^1.7.2"
   },

@@ -12,8 +12,14 @@ var osenv = require('osenv')
 var dirname = path.join(osenv.tmpdir(), 'test-multiblob')
 rimraf.sync(dirname)
 
-var l = 100, random1 = []
-while(l --) random1.push(crypto.randomBytes(1024))
+var l = 100
+random1 = []
+random2 = []
+
+while (l--) {
+  random1.push(crypto.randomBytes(1024))
+  random2.push(crypto.randomBytes(1024))
+}
 
 module.exports = function (alg) {
 
@@ -26,6 +32,7 @@ function hasher (ary) {
 }
 
 var hash1 = hasher(random1)
+var hash2 = hasher(random2)
 
 tape('read a slice', function (t) {
   pull(
@@ -41,6 +48,24 @@ tape('read a slice', function (t) {
           t.end()
         })
       )
+    })
+  )
+})
+
+tape('error if requested hash is missing', function (t) {
+  pull(
+    pull(blobs.get(hash2)),
+    pull.collect(function (err) {
+      for (var key in err) {
+        console.log(key, err[key])
+      }
+
+      t.ok(err, 'error message exists')
+      t.equal(err.code, 'ENOENT', 'error code is unchanged')
+      t.equal(err.message, 'blob not found', 'error message is correctly delcared')
+      t.notOk(err.path, 'do not include file path')
+      t.notOk(err.dest, 'does not include destination')
+      t.end()
     })
   )
 })

@@ -26,9 +26,7 @@ function readFile (...args) {
   return pull(
     Read(...args),
     Catch(err => {
-      if (err.code === 'ENOENT' ) {
-        err.message = 'blob not found'
-      }
+      err.message = 'could not get blob'
 
       // delete sensitive metadata
       err.path = null

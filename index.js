@@ -22,6 +22,14 @@ function write (filename, cb) {
   return WriteFile(filename, cb)
 }
 
+/**
+ * Wraps the `pull-file` function module with two changes: errors are redacted,
+ * and any error except ENOENT (file not found) will be logged to the server.
+ *
+ * @param {...object} args - arguments to pass to `pull-file`
+ *
+ * @return {function} pull-stream source, to be consumed by a through or sink
+ */
 function readFile (...args) {
   return pull(
     Read(...args),

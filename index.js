@@ -26,6 +26,10 @@ function readFile (...args) {
   return pull(
     Read(...args),
     Catch(err => {
+      if (err.code !== 'ENOENT') {
+        console.error(new Error(err))
+      }
+
       err.message = 'could not get blob'
 
       // delete sensitive metadata

@@ -63,8 +63,6 @@ tape('error if requested hash is missing', function (t) {
       t.ok(err, 'error message exists')
       t.equal(err.code, 'ENOENT', 'error code is unchanged')
       t.equal(err.message, 'could not get blob', 'error message is correctly delcared')
-      t.notOk(err.path, 'do not include file path')
-      t.notOk(err.dest, 'does not include destination')
       t.end()
     })
   )

@@ -40,10 +40,6 @@ function readFile (...args) {
 
       err.message = 'could not get blob'
 
-      // delete sensitive metadata
-      err.path = null
-      err.dest = null
-
       return false // pass along error
     })
   )

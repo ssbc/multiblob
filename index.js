@@ -13,6 +13,7 @@ var Notify   = require('pull-notify')
 var Live     = require('pull-live')
 var Write    = require('pull-write-file')
 var Read     = require('pull-file')
+var Catch    = require('pull-catch')
 
 var u = require('./util')
 var createHash = u.createHash
@@ -21,9 +22,29 @@ function write (filename, cb) {
   return WriteFile(filename, cb)
 }
 
-function read (filename) {
-  return ReadFile(filename)
-}
+/**
+ * Wraps the `pull-file` function module with two changes: errors are redacted,
+ * and any error except ENOENT (file not found) will be logged to the server.
+ *
+ * @param {...object} args - arguments to pass to `pull-file`
+ *
+ * @return {function} pull-stream source, to be consumed by a through or sink
+ */
+function readFile (...args) {
+  return pull(
+    Read(...args),
+    Catch(err => {
+      if (err.code !== 'ENOENT') {
+        console.error(err.toString())
+      }
+
+      err.message = 'could not get blob'
+
+      return false // pass along error
+    })
+  )
+};
+
 
 function toArray (h) {
   return Array.isArray(h) ? h : [h]
@@ -192,7 +213,7 @@ var Blobs = module.exports = function (config) {
         ))
 
       else
-        stream.resolve(Read(toPath(dir, opts.hash), {
+        stream.resolve(readFile(toPath(dir, opts.hash), {
           start: opts.start,
           end: opts.end
         }))
@@ -206,7 +227,7 @@ var Blobs = module.exports = function (config) {
     get: function (opts) {
       if(isHash(opts)) {
         if(isEmptyHash(hash)) return pull.empty()
-        return Read(toPath(dir, opts))
+        return readFile(toPath(dir, opts))
       }
       var hash = opts.key || opts.hash
       if(!isHash(hash))

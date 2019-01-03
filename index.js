@@ -35,7 +35,7 @@ function readFile (...args) {
     Read(...args),
     Catch(err => {
       if (err.code !== 'ENOENT') {
-        console.error(err.toString())
+        console.error(new Error(err))
       }
 
       err.message = 'could not get blob'

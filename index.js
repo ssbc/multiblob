@@ -18,23 +18,25 @@ var Catch    = require('pull-catch')
 var u = require('./util')
 var createHash = u.createHash
 
-function write (filename, cb) {
-  return WriteFile(filename, cb)
-}
-
 /**
  * Wraps the `pull-file` function module with two changes: errors are redacted,
- * and any error except ENOENT (file not found) will be logged to the server.
+ * and any errors except ENOENT and EBADF will be logged to the server.
  *
  * @param {...object} args - arguments to pass to `pull-file`
  *
  * @return {function} pull-stream source, to be consumed by a through or sink
  */
 function readFile (...args) {
+
+  const ignoredErrorCodes = [
+    'ENOENT',
+    'EBADF'
+  ]
+
   return pull(
     Read(...args),
     Catch(err => {
-      if (err.code !== 'ENOENT') {
+      if (ignoredErrorCodes.includes(err.code) === false) {
         console.error(new Error(err))
       }
 

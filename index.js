@@ -8,7 +8,6 @@ var rimraf   = require('rimraf')
 var fs       = require('fs')
 var glob     = require('pull-glob')
 var paramap  = require('pull-paramap')
-var cat      = require('pull-cat')
 var Notify   = require('pull-notify')
 var Live     = require('pull-live')
 var Write    = require('pull-write-file')
@@ -17,10 +16,6 @@ var Catch    = require('pull-catch')
 
 var u = require('./util')
 var createHash = u.createHash
-
-function write (filename, cb) {
-  return WriteFile(filename, cb)
-}
 
 /**
  * Wraps the `pull-file` function module with two changes: errors are redacted,
@@ -78,14 +73,18 @@ function single (fn) {
   return async
 }
 
-var Blobs = module.exports = function (config) {
+module.exports = function Blobs (config) {
+  if (!config) throw Error('multiblob expects config')
+
   var dir
   if('string' === typeof config)
     dir = config, config = {dir: dir}
 
+  dir = config.dir
   var encode = config.encode || u.encode
   var decode = config.decode || u.decode
   var isHash = config.isHash || u.isHash
+  var alg = config.hash = config.hash || config.alg || 'blake2s'
 
   function toPath (dir, string) {
     if(!string || !isHash(string)) return false
@@ -102,19 +101,15 @@ var Blobs = module.exports = function (config) {
 
   var newBlob = Notify()
 
-  config = config || {}
-  var alg = config.hash = config.hash || config.alg || 'blake2s'
-
   var empty = u.encode(u.algs[alg]().digest(), alg)
+  // MIX: I think this should be encode NOT u.encode ?!
 
   function isEmptyHash(hash) {
     return empty === hash
   }
 
-  dir = config.dir
-
   var n = 0
-  var waiting = [], tmp = false, clean = false
+  var waiting = [], tmp = false
 
   function init (cb) {
     if(tmp) return cb()
@@ -189,8 +184,6 @@ var Blobs = module.exports = function (config) {
       return cb
     }
   }
-
-  var listeners = []
 
   function getSlice(opts) {
     if(isEmptyHash(opts.hash)) return pull.empty()
@@ -328,8 +321,8 @@ var Blobs = module.exports = function (config) {
     }, function live (opts) {
       var long = (opts.size || opts.long || opts.meta)
       return long
-          ? newBlob.listen()
-          : pull(newBlob.listen(), pull.map(function (e) { return e.id }))
+        ? newBlob.listen()
+        : pull(newBlob.listen(), pull.map(function (e) { return e.id }))
     }),
 
     rm: function (hash, cb) {
@@ -343,5 +336,3 @@ var Blobs = module.exports = function (config) {
     }
   }
 }
-
-

@@ -23,10 +23,10 @@ module.exports = function Blobs (config) {
     dir = config, config = {dir: dir}
 
   dir = config.dir
+  var alg = config.hash = config.hash || config.alg || 'blake2s'
   var encode = config.encode || u.encode
   var decode = config.decode || u.decode
   var isHash = config.isHash || u.isHash
-  var alg = config.hash = config.hash || config.alg || 'blake2s'
 
   function toPath (dir, string) {
     if(!string || !isHash(string)) return false

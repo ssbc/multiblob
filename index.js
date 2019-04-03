@@ -11,67 +11,9 @@ var paramap  = require('pull-paramap')
 var Notify   = require('pull-notify')
 var Live     = require('pull-live')
 var Write    = require('pull-write-file')
-var Read     = require('pull-file')
-var Catch    = require('pull-catch')
 
 var u = require('./util')
 var createHash = u.createHash
-
-/**
- * Wraps the `pull-file` function module with two changes: errors are redacted,
- * and any error except ENOENT (file not found) will be logged to the server.
- *
- * @param {...object} args - arguments to pass to `pull-file`
- *
- * @return {function} pull-stream source, to be consumed by a through or sink
- */
-function readFile (...args) {
-  return pull(
-    Read(...args),
-    Catch(err => {
-      if (err.code !== 'ENOENT') {
-        console.error(new Error(err))
-      }
-
-      err.message = 'could not get blob'
-
-      return false // pass along error
-    })
-  )
-};
-
-
-function toArray (h) {
-  return Array.isArray(h) ? h : [h]
-}
-
-function single (fn) {
-  var waiting = {}
-  function async (key, cb) {
-    if(!waiting[key]) {
-      waiting[key] = [cb]
-      var cbs = waiting[key]
-      fn(key, function done (err, result) {
-        if(cbs.length)
-        delete waiting[key]
-        while(cbs.length) cbs.shift()(err, result)
-      })
-    }
-    else
-      waiting[key].push(cb)
-  }
-
-  //dump all the things that have been done already,
-  //when something has been added?
-  async.done = function (key, err, value) {
-    if(!waiting[key]) return
-    var cbs = waiting[key]
-    delete waiting[key]
-    while(cbs.length) cbs.shift()(err, result)
-  }
-
-  return async
-}
 
 module.exports = function Blobs (config) {
   if (!config) throw Error('multiblob expects config')
@@ -116,7 +58,7 @@ module.exports = function Blobs (config) {
     else waiting.push(cb)
   }
 
-  var stat = single(fs.stat)
+  var stat = u.single(fs.stat)
 
   var tmpdir = path.join(dir, 'tmp')
 
@@ -171,7 +113,7 @@ module.exports = function Blobs (config) {
       }))
         return cb(new Error('not a valid hash:'+invalid))
         
-      cont.para(toArray(hashes).map(test)) (function (err, ary) {
+      cont.para(u.toArray(hashes).map(test)) (function (err, ary) {
         //will give an error if any hash was invalid.
         if(err) cb(err)
         // This will only error if the hash is not present,
@@ -206,7 +148,7 @@ module.exports = function Blobs (config) {
         ))
 
       else
-        stream.resolve(readFile(toPath(dir, opts.hash), {
+        stream.resolve(u.readFile(toPath(dir, opts.hash), {
           start: opts.start,
           end: opts.end
         }))
@@ -220,7 +162,7 @@ module.exports = function Blobs (config) {
     get: function (opts) {
       if(isHash(opts)) {
         if(isEmptyHash(hash)) return pull.empty()
-        return readFile(toPath(dir, opts))
+        return u.readFile(toPath(dir, opts))
       }
       var hash = opts.key || opts.hash
       if(!isHash(hash))

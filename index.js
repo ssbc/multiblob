@@ -17,14 +17,6 @@ var Read     = require('pull-file')
 var u = require('./util')
 var createHash = u.createHash
 
-function write (filename, cb) {
-  return WriteFile(filename, cb)
-}
-
-function read (filename) {
-  return ReadFile(filename)
-}
-
 function toArray (h) {
   return Array.isArray(h) ? h : [h]
 }
@@ -322,5 +314,6 @@ var Blobs = module.exports = function (config) {
     }
   }
 }
+
 
 

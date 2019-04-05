@@ -107,47 +107,47 @@ var Blobs = module.exports = function (config) {
     return {id: hash, size: stat.size, ts: +stat.ctime}
   }
 
-  function has (hash) {
+  function has (id) {
     return function (cb) {
-      if(isEmptyHash(hash)) return cb(null, true)
-      var p = toPath(dir, hash)
-      if(!p) return cb(new Error('not a valid blob hash:'+hash))
+      if(isEmptyHash(id)) return cb(null, true)
+      var p = toPath(dir, id)
+      if(!p) return cb(new Error('not a valid blob id:'+id))
       stat(p, function (err, stat) {
         cb(null, !!stat)
       })
     }
   }
 
-  function size (hash) {
+  function size (id) {
     return function (cb) {
-      if(isEmptyHash(hash)) return cb(null, 0)
-      var p = toPath(dir, hash)
-      if(!p) return cb(new Error('not a valid blob hash:'+hash))
+      if(isEmptyHash(id)) return cb(null, 0)
+      var p = toPath(dir, id)
+      if(!p) return cb(new Error('not a valid blob id:'+id))
       stat(p, function (err, stat) {
         cb(null, stat ? stat.size : null)
       })
     }
   }
 
-  var meta = function (hash, cb) {
-    if(isEmptyHash(hash)) return cb(null, {id: hash, size: 0, ts: 0})
-    stat(toPath(dir, hash), function (err, stat) {
-      cb(err, toMeta(hash, stat))
+  var meta = function (id, cb) {
+    if(isEmptyHash(id)) return cb(null, {id: id, size: 0, ts: 0})
+    stat(toPath(dir, id), function (err, stat) {
+      cb(err, toMeta(id, stat))
     })
   }
 
   function createTester (test) {
-    return function (hashes, cb) {
-      var n = !Array.isArray(hashes)
+    return function (ids, cb) {
+      var n = !Array.isArray(ids)
       //check if any hashes are invalid.
       var invalid
-      if(n ? !isHash(hashes) : !hashes.every(function (h) {
+      if(n ? !isHash(ids) : !ids.every(function (h) {
         if(!isHash(h)) invalid = h
         else return true
       }))
-        return cb(new Error('not a valid hash:'+invalid))
+        return cb(new Error('not a valid id:'+invalid))
         
-      cont.para(toArray(hashes).map(test)) (function (err, ary) {
+      cont.para(toArray(ids).map(test)) (function (err, ary) {
         //will give an error if any hash was invalid.
         if(err) cb(err)
         // This will only error if the hash is not present,
@@ -164,27 +164,28 @@ var Blobs = module.exports = function (config) {
   var listeners = []
 
   function getSlice(opts) {
-    if(isEmptyHash(opts.hash)) return pull.empty()
+    var id = opts.id || opts.key || opts.hash
+    if(isEmptyHash(id)) return pull.empty()
 
     var stream = defer.source()
-    stat(toPath(dir, opts.hash), function (err, stat) {
+    stat(toPath(dir, id), function (err, stat) {
       if(err)
         stream.abort(explain(err, 'stat failed'))
 
       else if(opts.size != null && opts.size !== stat.size)
         stream.abort(new Error('incorrect file length,'
           + ' requested:' + opts.size + ' file was:' + stat.size
-          + ' for file:' + opts.hash
+          + ' for file:' + id
         ))
 
       else if(opts.max != null && opts.max < stat.size)
         stream.abort(new Error('incorrect file length,'
           + ' requested:' + opts.size + ' file was:' + stat.size
-          + ' for file:' + opts.hash
+          + ' for file:' + id
         ))
 
       else
-        stream.resolve(Read(toPath(dir, opts.hash), {
+        stream.resolve(Read(toPath(dir, id), {
           start: opts.start,
           end: opts.end
         }))
@@ -197,23 +198,25 @@ var Blobs = module.exports = function (config) {
   return {
     get: function (opts) {
       if(isHash(opts)) {
-        if(isEmptyHash(hash)) return pull.empty()
+        if(isEmptyHash(opts)) return pull.empty()
         return Read(toPath(dir, opts))
       }
-      var hash = opts.key || opts.hash
-      if(!isHash(hash))
+      var id = opts.id || opts.key || opts.hash
+
+      if(!isHash(id))
         return pull.error(new Error(
-          'multiblob.get: {hash} is mandatory'
+          'multiblob.get: {id} is mandatory'
         ))
 
-      return getSlice({hash: hash, size: opts.size, max: opts.max})
+      return getSlice({id: id, size: opts.size, max: opts.max})
     },
     isEmptyHash: isEmptyHash,
 
     getSlice: function (opts) {
-      if(!isHash(opts.hash))
+      var id = opts.id || opts.key || opts.hash
+      if(!isHash(id))
         return pull.error(new Error(
-          'multiblob.getSlice: {hash} is mandatory'
+          'multiblob.getSlice: {id} is mandatory'
         ))
 
       if(isNaN(opts.start))
@@ -234,14 +237,14 @@ var Blobs = module.exports = function (config) {
     has: createTester(has),
     meta: meta,
 
-    add: function (hash, cb) {
-      if('function' === typeof hash) cb = hash, hash = null
+    add: function (id, cb) {
+      if('function' === typeof id) cb = id, id = null
 
       if(!cb) cb = function (err) {
         if(err) throw explain(err, 'no callback provided')
       }
 
-      if(hash && !isHash(hash)) {
+      if(id && !isHash(id)) {
         //abort input stream and callback once source is aborted.
         var err = new Error('not a valid hash:'+hash)
         return function (read) {
@@ -265,18 +268,18 @@ var Blobs = module.exports = function (config) {
           Write(tmpfile, function (err) {
             if(err) return cb(explain(err, 'could not write to tmpfile'))
 
-            var _hash = encode(hasher.digest, alg)
+            var _id = encode(hasher.digest, alg)
 
-            if(hash && hash !== _hash)
-              return cb(new Error('actual hash:'+ _hash
-                + ' did not match expected hash:'+hash), _hash)
+            if(id && id !== _id)
+              return cb(new Error('actual hash:'+ _id
+                + ' did not match expected id:'+id), _id)
 
-            var p = toPath(dir, hash || _hash)
+            var p = toPath(dir, id || _id)
 
             mkdirp(path.dirname(p), function () {
               fs.rename(tmpfile, p, function (err) {
                 if(err) cb(explain(err, 'could not move file'))
-                else    newBlob({id:toHash(p), size: size, ts: Date.now()}), cb(null, _hash)
+                else    newBlob({id:toHash(p), size: size, ts: Date.now()}), cb(null, _id)
               })
             })
           })
@@ -303,17 +306,15 @@ var Blobs = module.exports = function (config) {
           : pull(newBlob.listen(), pull.map(function (e) { return e.id }))
     }),
 
-    rm: function (hash, cb) {
-      if(!isHash(hash)) cb(new Error('not valid hash:'+hash))
-      else              fs.unlink(toPath(dir, hash), cb)
+    rm: function (id, cb) {
+      if(!isHash(id)) cb(new Error('not valid id:'+id))
+      else              fs.unlink(toPath(dir, id), cb)
     },
 
-    resolve: function (hash) {
-      if(!isHash(hash)) throw new Error('not valid hash:'+hash)
-      return toPath(dir, hash)
+    resolve: function (id) {
+      if(!isHash(id)) throw new Error('not valid id:'+id)
+      return toPath(dir, id)
     }
   }
 }
-
-
 

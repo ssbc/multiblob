@@ -47,7 +47,7 @@ If the argument is an `opts` object, with the `key: hash` property,
 retrive that blob, but error if the size does not exactly match the
 `size` property, or is over `max` property (in bytes)
 
-### blbos.getSlice(opts) => Source
+### blobs.getSlice(opts) => Source
 
 create a source stream that reads a slice of a given blob,
 from the `start` property to the `end` property, in bytes.

@@ -8,83 +8,22 @@ var rimraf   = require('rimraf')
 var fs       = require('fs')
 var glob     = require('pull-glob')
 var paramap  = require('pull-paramap')
-var cat      = require('pull-cat')
 var Notify   = require('pull-notify')
 var Live     = require('pull-live')
 var Write    = require('pull-write-file')
-var Read     = require('pull-file')
-var Catch    = require('pull-catch')
 
 var u = require('./util')
 var createHash = u.createHash
 
-/**
- * Wraps the `pull-file` function module with two changes: errors are redacted,
- * and any errors except ENOENT and EBADF will be logged to the server.
- *
- * @param {...object} args - arguments to pass to `pull-file`
- *
- * @return {function} pull-stream source, to be consumed by a through or sink
- */
-function readFile (...args) {
+module.exports = function Blobs (config) {
+  if (!config) throw Error('multiblob expects config')
 
-  const ignoredErrorCodes = [
-    'ENOENT',
-    'EBADF'
-  ]
-
-  return pull(
-    Read(...args),
-    Catch(err => {
-      if (ignoredErrorCodes.includes(err.code) === false) {
-        console.error(new Error(err))
-      }
-
-      err.message = 'could not get blob'
-
-      return false // pass along error
-    })
-  )
-};
-
-
-function toArray (h) {
-  return Array.isArray(h) ? h : [h]
-}
-
-function single (fn) {
-  var waiting = {}
-  function async (key, cb) {
-    if(!waiting[key]) {
-      waiting[key] = [cb]
-      var cbs = waiting[key]
-      fn(key, function done (err, result) {
-        if(cbs.length)
-        delete waiting[key]
-        while(cbs.length) cbs.shift()(err, result)
-      })
-    }
-    else
-      waiting[key].push(cb)
-  }
-
-  //dump all the things that have been done already,
-  //when something has been added?
-  async.done = function (key, err, value) {
-    if(!waiting[key]) return
-    var cbs = waiting[key]
-    delete waiting[key]
-    while(cbs.length) cbs.shift()(err, result)
-  }
-
-  return async
-}
-
-var Blobs = module.exports = function (config) {
   var dir
   if('string' === typeof config)
     dir = config, config = {dir: dir}
 
+  dir = config.dir
+  var alg = config.hash = config.hash || config.alg || 'blake2s'
   var encode = config.encode || u.encode
   var decode = config.decode || u.decode
   var isHash = config.isHash || u.isHash
@@ -104,26 +43,22 @@ var Blobs = module.exports = function (config) {
 
   var newBlob = Notify()
 
-  config = config || {}
-  var alg = config.hash = config.hash || config.alg || 'blake2s'
-
   var empty = u.encode(u.algs[alg]().digest(), alg)
+  // MIX: I think this should be encode NOT u.encode ?!
 
   function isEmptyHash(hash) {
     return empty === hash
   }
 
-  dir = config.dir
-
   var n = 0
-  var waiting = [], tmp = false, clean = false
+  var waiting = [], tmp = false
 
   function init (cb) {
     if(tmp) return cb()
     else waiting.push(cb)
   }
 
-  var stat = single(fs.stat)
+  var stat = u.single(fs.stat)
 
   var tmpdir = path.join(dir, 'tmp')
 
@@ -178,7 +113,7 @@ var Blobs = module.exports = function (config) {
       }))
         return cb(new Error('not a valid hash:'+invalid))
         
-      cont.para(toArray(hashes).map(test)) (function (err, ary) {
+      cont.para(u.toArray(hashes).map(test)) (function (err, ary) {
         //will give an error if any hash was invalid.
         if(err) cb(err)
         // This will only error if the hash is not present,
@@ -191,8 +126,6 @@ var Blobs = module.exports = function (config) {
       return cb
     }
   }
-
-  var listeners = []
 
   function getSlice(opts) {
     if(isEmptyHash(opts.hash)) return pull.empty()
@@ -215,7 +148,7 @@ var Blobs = module.exports = function (config) {
         ))
 
       else
-        stream.resolve(readFile(toPath(dir, opts.hash), {
+        stream.resolve(u.readFile(toPath(dir, opts.hash), {
           start: opts.start,
           end: opts.end
         }))
@@ -229,7 +162,7 @@ var Blobs = module.exports = function (config) {
     get: function (opts) {
       if(isHash(opts)) {
         if(isEmptyHash(hash)) return pull.empty()
-        return readFile(toPath(dir, opts))
+        return u.readFile(toPath(dir, opts))
       }
       var hash = opts.key || opts.hash
       if(!isHash(hash))
@@ -330,8 +263,8 @@ var Blobs = module.exports = function (config) {
     }, function live (opts) {
       var long = (opts.size || opts.long || opts.meta)
       return long
-          ? newBlob.listen()
-          : pull(newBlob.listen(), pull.map(function (e) { return e.id }))
+        ? newBlob.listen()
+        : pull(newBlob.listen(), pull.map(function (e) { return e.id }))
     }),
 
     rm: function (hash, cb) {
@@ -345,5 +278,6 @@ var Blobs = module.exports = function (config) {
     }
   }
 }
+
 
 

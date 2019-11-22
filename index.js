@@ -21,6 +21,10 @@ function toArray (h) {
   return Array.isArray(h) ? h : [h]
 }
 
+function getId (opts) {
+  return opts.id || opts.key || opts.hash
+}
+
 function single (fn) {
   var waiting = {}
   function async (key, cb) {
@@ -164,7 +168,8 @@ var Blobs = module.exports = function (config) {
   var listeners = []
 
   function getSlice(opts) {
-    var id = opts.id || opts.key || opts.hash
+    var id = getId(opts)
+
     if(isEmptyHash(id)) return pull.empty()
 
     var stream = defer.source()
@@ -201,7 +206,7 @@ var Blobs = module.exports = function (config) {
         if(isEmptyHash(opts)) return pull.empty()
         return Read(toPath(dir, opts))
       }
-      var id = opts.id || opts.key || opts.hash
+      var id = getId(opts)
 
       if(!isHash(id))
         return pull.error(new Error(
@@ -213,7 +218,7 @@ var Blobs = module.exports = function (config) {
     isEmptyHash: isEmptyHash,
 
     getSlice: function (opts) {
-      var id = opts.id || opts.key || opts.hash
+      var id = getId(opts)
       if(!isHash(id))
         return pull.error(new Error(
           'multiblob.getSlice: {id} is mandatory'

@@ -11,52 +11,19 @@ var paramap  = require('pull-paramap')
 var Notify   = require('pull-notify')
 var Live     = require('pull-live')
 var Write    = require('pull-write-file')
-var Read     = require('pull-file')
 
 var u = require('./util')
 var createHash = u.createHash
 
-function toArray (h) {
-  return Array.isArray(h) ? h : [h]
-}
+module.exports = function Blobs (config) {
+  if (!config) throw Error('multiblob expects config')
 
-function getId (opts) {
-  return opts.id || opts.key || opts.hash
-}
-
-function single (fn) {
-  var waiting = {}
-  function async (key, cb) {
-    if(!waiting[key]) {
-      waiting[key] = [cb]
-      var cbs = waiting[key]
-      fn(key, function done (err, result) {
-        if(cbs.length)
-        delete waiting[key]
-        while(cbs.length) cbs.shift()(err, result)
-      })
-    }
-    else
-      waiting[key].push(cb)
-  }
-
-  //dump all the things that have been done already,
-  //when something has been added?
-  async.done = function (key, err, value) {
-    if(!waiting[key]) return
-    var cbs = waiting[key]
-    delete waiting[key]
-    while(cbs.length) cbs.shift()(err, result)
-  }
-
-  return async
-}
-
-module.exports = function (config) {
   var dir
   if('string' === typeof config)
     dir = config, config = {dir: dir}
 
+  dir = config.dir
+  var alg = config.hash = config.hash || config.alg || 'blake2s'
   var encode = config.encode || u.encode
   var decode = config.decode || u.decode
   var isHash = config.isHash || u.isHash
@@ -76,16 +43,12 @@ module.exports = function (config) {
 
   var newBlob = Notify()
 
-  config = config || {}
-  var alg = config.hash = config.hash || config.alg || 'blake2s'
-
   var empty = u.encode(u.algs[alg]().digest(), alg)
+  // MIX: I think this should be encode NOT u.encode ?!
 
   function isEmptyHash(hash) {
     return empty === hash
   }
-
-  dir = config.dir
 
   var n = 0
   var waiting = []
@@ -96,7 +59,7 @@ module.exports = function (config) {
     else waiting.push(cb)
   }
 
-  var stat = single(fs.stat)
+  var stat = u.single(fs.stat)
 
   var tmpdir = path.join(dir, 'tmp')
 
@@ -151,7 +114,7 @@ module.exports = function (config) {
       }))
         return cb(new Error('not a valid id:'+invalid))
         
-      cont.para(toArray(ids).map(test)) (function (err, ary) {
+      cont.para(u.toArray(ids).map(test)) (function (err, ary) {
         //will give an error if any hash was invalid.
         if(err) cb(err)
         // This will only error if the hash is not present,
@@ -166,7 +129,7 @@ module.exports = function (config) {
   }
 
   function getSlice(opts) {
-    var id = getId(opts)
+    var id = u.getId(opts)
 
     if(isEmptyHash(id)) return pull.empty()
 
@@ -188,7 +151,7 @@ module.exports = function (config) {
         ))
 
       else
-        stream.resolve(Read(toPath(dir, id), {
+        stream.resolve(u.readFile(toPath(dir, id), {
           start: opts.start,
           end: opts.end
         }))
@@ -202,9 +165,9 @@ module.exports = function (config) {
     get: function (opts) {
       if(isHash(opts)) {
         if(isEmptyHash(opts)) return pull.empty()
-        return Read(toPath(dir, opts))
+        return u.readFile(toPath(dir, opts))
       }
-      var id = getId(opts)
+      var id = u.getId(opts)
 
       if(!isHash(id))
         return pull.error(new Error(
@@ -216,7 +179,7 @@ module.exports = function (config) {
     isEmptyHash: isEmptyHash,
 
     getSlice: function (opts) {
-      var id = getId(opts)
+      var id = u.getId(opts)
       if(!isHash(id))
         return pull.error(new Error(
           'multiblob.getSlice: {id} is mandatory'
@@ -305,8 +268,8 @@ module.exports = function (config) {
     }, function live (opts) {
       var long = (opts.size || opts.long || opts.meta)
       return long
-          ? newBlob.listen()
-          : pull(newBlob.listen(), pull.map(function (e) { return e.id }))
+        ? newBlob.listen()
+        : pull(newBlob.listen(), pull.map(function (e) { return e.id }))
     }),
 
     rm: function (id, cb) {

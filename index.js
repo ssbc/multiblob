@@ -8,7 +8,6 @@ var rimraf   = require('rimraf')
 var fs       = require('fs')
 var glob     = require('pull-glob')
 var paramap  = require('pull-paramap')
-var cat      = require('pull-cat')
 var Notify   = require('pull-notify')
 var Live     = require('pull-live')
 var Write    = require('pull-write-file')
@@ -53,7 +52,7 @@ function single (fn) {
   return async
 }
 
-var Blobs = module.exports = function (config) {
+module.exports = function (config) {
   var dir
   if('string' === typeof config)
     dir = config, config = {dir: dir}
@@ -89,7 +88,8 @@ var Blobs = module.exports = function (config) {
   dir = config.dir
 
   var n = 0
-  var waiting = [], tmp = false, clean = false
+  var waiting = []
+  var tmp = false
 
   function init (cb) {
     if(tmp) return cb()
@@ -164,8 +164,6 @@ var Blobs = module.exports = function (config) {
       return cb
     }
   }
-
-  var listeners = []
 
   function getSlice(opts) {
     var id = getId(opts)
@@ -251,7 +249,7 @@ var Blobs = module.exports = function (config) {
 
       if(id && !isHash(id)) {
         //abort input stream and callback once source is aborted.
-        var err = new Error('not a valid hash:'+hash)
+        var err = new Error(`not a valid hash: ${id}`)
         return function (read) {
           read(err, cb)
         }

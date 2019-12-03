@@ -59,11 +59,16 @@ exports.algs = algs
  * @return {function} pull-stream source, to be consumed by a through or sink
  */
 
-exports.readFile = function (...args) {
+exports.readFile = function readFile (...args) {
+  const ignoredErrorCodes = [
+    'ENOENT',
+    'EBADF'
+  ]
+
   return pull(
     Read(...args),
     Catch(err => {
-      if (err.code !== 'ENOENT') {
+      if (ignoredErrorCodes.includes(err.code) === false) {
         console.error(new Error(err))
       }
 

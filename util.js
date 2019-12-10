@@ -60,7 +60,7 @@ exports.algs = algs
  */
 
 exports.readFile = function readFile (...args) {
-  const ignoredErrorCodes = [
+  const silencedErrorCodes = [
     'ENOENT',
     'EBADF'
   ]
@@ -68,7 +68,7 @@ exports.readFile = function readFile (...args) {
   return pull(
     Read(...args),
     Catch(err => {
-      if (ignoredErrorCodes.includes(err.code) === false) {
+      if (silencedErrorCodes.includes(err.code) === false) {
         console.error(new Error(err))
       }
 

@@ -52,7 +52,7 @@ exports.algs = algs
 
 /**
  * Wraps the `pull-file` function module with two changes: errors are redacted,
- * and any error except ENOENT (file not found) will be logged to the server.
+ * to avoid leaking private information about the file system.
  *
  * @param {...object} args - arguments to pass to `pull-file`
  *
@@ -60,18 +60,11 @@ exports.algs = algs
  */
 
 exports.readFile = function readFile (...args) {
-  const ignoredErrorCodes = [
-    'ENOENT',
-    'EBADF'
-  ]
 
   return pull(
     Read(...args),
     Catch(err => {
-      if (ignoredErrorCodes.includes(err.code) === false) {
-        console.error(new Error(err))
-      }
-
+      //redact stack trace
       err.message = 'could not get blob'
 
       return false // pass along error

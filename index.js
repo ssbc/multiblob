@@ -64,7 +64,7 @@ module.exports = function Blobs (config) {
   var tmpdir = path.join(dir, 'tmp')
 
   rimraf(tmpdir, function () {
-    mkdirp(tmpdir, function () {
+    mkdirp(tmpdir).then(function () {
       tmp = true; while(waiting.length) waiting.shift()()
     })
   })
@@ -113,7 +113,7 @@ module.exports = function Blobs (config) {
         else return true
       }))
         return cb(new Error('not a valid id:'+invalid))
-        
+
       cont.para(u.toArray(ids).map(test)) (function (err, ary) {
         //will give an error if any hash was invalid.
         if(err) cb(err)
@@ -242,7 +242,7 @@ module.exports = function Blobs (config) {
 
             var p = toPath(dir, id || _id)
 
-            mkdirp(path.dirname(p), function () {
+            mkdirp(path.dirname(p)).then(function () {
               fs.rename(tmpfile, p, function (err) {
                 if(err) cb(explain(err, 'could not move file'))
                 else    newBlob({id:toHash(p), size: size, ts: Date.now()}), cb(null, _id)

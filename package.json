@@ -7,6 +7,9 @@
     "type": "git",
     "url": "git://github.com/ssbc/multiblob.git"
   },
+  "files": [
+    "*.js"
+  ],
   "dependencies": {
     "blake2s": "^1.0.1",
     "cont": "^1.0.1",

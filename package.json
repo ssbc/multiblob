@@ -1,11 +1,11 @@
 {
   "name": "multiblob",
-  "description": "",
+  "description": "A content-addressable store supporting multiple hash algorithms",
   "version": "1.13.7",
-  "homepage": "https://github.com/dominictarr/multiblob",
+  "homepage": "https://github.com/ssbc/multiblob",
   "repository": {
     "type": "git",
-    "url": "git://github.com/dominictarr/multiblob.git"
+    "url": "git://github.com/ssbc/multiblob.git"
   },
   "dependencies": {
     "blake2s": "^1.0.1",

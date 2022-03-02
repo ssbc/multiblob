@@ -1,7 +1,7 @@
 {
   "name": "multiblob",
   "description": "A content-addressable store supporting multiple hash algorithms",
-  "version": "1.13.7",
+  "version": "1.13.8",
   "homepage": "https://github.com/ssbc/multiblob",
   "repository": {
     "type": "git",

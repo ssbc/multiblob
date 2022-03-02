@@ -2,7 +2,7 @@ var cont     = require('cont')
 var pull     = require('pull-stream')
 var defer    = require('pull-defer')
 var path     = require('path')
-var explain  = require('explain-error')
+var clarify  = require('clarify-error')
 var mkdirp   = require('mkdirp')
 var rimraf   = require('rimraf')
 var fs       = require('fs')
@@ -136,7 +136,7 @@ module.exports = function Blobs (config) {
     var stream = defer.source()
     stat(toPath(dir, id), function (err, stat) {
       if(err)
-        stream.abort(explain(err, 'stat failed'))
+        stream.abort(clarify(err, 'stat failed'))
 
       else if(opts.size != null && opts.size !== stat.size)
         stream.abort(new Error('incorrect file length,'
@@ -207,7 +207,7 @@ module.exports = function Blobs (config) {
       if('function' === typeof id) cb = id, id = null
 
       if(!cb) cb = function (err) {
-        if(err) throw explain(err, 'no callback provided')
+        if(err) throw clarify(err, 'no callback provided')
       }
 
       if(id && !isHash(id)) {
@@ -232,7 +232,7 @@ module.exports = function Blobs (config) {
             return data
           }),
           Write(tmpfile, function (err) {
-            if(err) return cb(explain(err, 'could not write to tmpfile'))
+            if(err) return cb(clarify(err, 'could not write to tmpfile'))
 
             var _id = encode(hasher.digest, alg)
 
@@ -244,7 +244,7 @@ module.exports = function Blobs (config) {
 
             mkdirp(path.dirname(p)).then(function () {
               fs.rename(tmpfile, p, function (err) {
-                if(err) cb(explain(err, 'could not move file'))
+                if(err) cb(clarify(err, 'could not move file'))
                 else    newBlob({id:toHash(p), size: size, ts: Date.now()}), cb(null, _id)
               })
             })
